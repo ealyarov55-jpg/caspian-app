@@ -1,0 +1,135 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Poppins:wght@300;400;600;800&display=swap');
+
+:root {
+    --primary: #00afb9;
+    --dark: #0081a7;
+    --danger: #f07167;
+    --bg: #f5f5f7;
+    --grad: linear-gradient(135deg, #0081a7, #00afb9);
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg);
+    margin: 0; padding: 0; color: #333;
+    overflow-x: hidden;
+    padding-bottom: 80px;
+}
+
+/* Стандартная карточка (для дашборда и календаря) */
+.card {
+    background: white; margin: 15px; padding: 20px;
+    border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.06);
+    position: relative; transition: 0.3s; border: none;
+}
+.card:hover { transform: translateY(-3px); }
+
+/* НОВАЯ КАРТОЧКА ТУРА (Чистый PWA) */
+.tour-card {
+    background: white; 
+    margin: 16px;
+    border-radius: 20px; 
+    box-shadow: 0 10px 25px rgba(0,0,0,0.06);
+    position: relative; 
+    transition: 0.3s;
+    border: none;
+}
+.tour-card:hover { transform: translateY(-3px); }
+
+/* Идеальное отображение картинок (без растягиваний) */
+.tour-image {
+    width: 100%; 
+    height: 180px; 
+    object-fit: cover; 
+    display: block;
+    border-radius: 20px 20px 0 0; 
+}
+
+.tour-card-content {
+    padding: 25px 16px 16px 16px; 
+}
+
+/* Элементы внутри карточки */
+.badge {
+    background: #e0f7f9; color: var(--dark);
+    padding: 5px 12px; border-radius: 20px;
+    font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+}
+
+.price-tag {
+    color: var(--dark); font-size: 1.3rem; font-weight: 800; font-family: 'Poppins', sans-serif;
+}
+
+h3 { margin: 0 0 10px 0; color: #2d3436; font-size: 1.2rem; font-family: 'Poppins', sans-serif; }
+
+/* КУРСОРЫ И ФОРМЫ */
+button, .bottom-nav button, select, input[type="date"] { cursor: pointer; }
+
+input, select, textarea {
+    width: 100%; padding: 14px; margin: 10px 0;
+    border: 1px solid #dee2e6; border-radius: 12px;
+    font-size: 16px; background: #fff; box-sizing: border-box; font-family: 'Inter', sans-serif;
+}
+
+.included-box {
+    background: #f1fafa; border-left: 4px solid var(--primary);
+    padding: 10px; border-radius: 8px; margin: 10px 0;
+    font-size: 0.9rem; color: #444;
+}
+
+.save-btn {
+    background: var(--grad); color: white; border: none;
+    padding: 16px; width: 100%; border-radius: 12px;
+    font-weight: 600; font-size: 1rem; box-shadow: 0 4px 15px rgba(0,175,185,0.3);
+}
+
+.btn-share {
+    background: #25D366; color: white; border: none;
+    padding: 12px; border-radius: 10px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; gap: 8px; flex: 3;
+}
+
+/* ИДЕАЛЬНАЯ ПЛАВАЮЩАЯ КНОПКА (FAB) ВМЕСТО ПОЛОСЫ */
+.add-tour-btn {
+    position: fixed;
+    bottom: 90px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: #008080;
+    color: white;
+    border: none;
+    font-size: 24px;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    z-index: 1000;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: 0.2s ease;
+}
+.add-tour-btn:active { transform: scale(0.95); }
+
+/* Навигация */
+.app-header {
+    background: var(--grad);
+    color: white; padding: 18px; text-align: center;
+    position: sticky; top: 0; z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.bottom-nav {
+    position: fixed; bottom: 0; width: 100%;
+    background: rgba(255,255,255,0.95); backdrop-filter: blur(10px);
+    display: flex; justify-content: space-around;
+    padding: 12px 0; border-top: 1px solid #eee; z-index: 2000;
+}
+
+.bottom-nav button {
+    background: none; border: none; color: #b2bec3;
+    font-size: 0.75rem; display: flex; flex-direction: column; align-items: center; font-family: 'Inter', sans-serif;
+}
+
+.bottom-nav button.active { color: var(--primary); font-weight: 600; }
+.bottom-nav i { font-size: 1.3rem; margin-bottom: 4px; }

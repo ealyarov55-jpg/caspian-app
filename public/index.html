@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Caspian DMC Portal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="app-header">
+        <div class="header-content"><span class="logo-text">CASPIAN<b>ROUTES</b></span></div>
+    </header>
+
+    <main class="content" id="app-content"></main>
+
+    <nav class="bottom-nav" style="display: none;">
+        <button onclick="render('главная')" id="nav-home"><i class="fas fa-chart-line"></i><span>Главная</span></button>
+        <button onclick="render('календарь')" id="nav-calendar"><i class="far fa-calendar-alt"></i><span>Календарь</span></button>
+        <button onclick="render('туры')" id="nav-tours"><i class="fas fa-map-marked-alt"></i><span>Туры</span></button>
+        <button onclick="render('профиль')" id="nav-profile"><i class="fas fa-user-tie"></i><span>Профиль</span></button>
+    </nav>
+
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+      import { getDatabase, ref, push, set, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyDu9U3SgE2bra7Z36bnAec5dXLhZq3KQR0",
+        authDomain: "caspianapp-c5d1c.firebaseapp.com",
+        projectId: "caspianapp-c5d1c",
+        databaseURL: "https://caspianapp-c5d1c-default-rtdb.firebaseio.com/", 
+        appId: "1:17997434765:web:fe856309a8c687d8aef7c4"
+      };
+
+      const app = initializeApp(firebaseConfig);
+      window.db = getDatabase(app);
+      window.dbFunc = { ref, push, set, onValue, remove, update };
+    </script>
+    <script type="module" src="app2.js"></script>
+</body>
+</html>

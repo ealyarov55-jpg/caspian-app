@@ -44,8 +44,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const initialHeight = window.innerHeight;
     window.addEventListener('resize', () => {
         const nav = document.querySelector('.bottom-nav');
-        if (nav && isAuthenticated && window.innerWidth < 768) {
-            nav.style.display = window.innerHeight < initialHeight * 0.8 ? 'none' : 'flex';
+        if (nav && isAuthenticated) {
+            if (window.innerWidth < 768) {
+                nav.style.display = window.innerHeight < initialHeight * 0.8 ? 'none' : 'flex';
+            } else {
+                nav.style.display = 'flex'; 
+            }
         }
     });
 
@@ -138,7 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!content) return;
 
         if (!isAuthenticated) {
-            content.innerHTML = `<div class="card" style="margin-top:60px; text-align:center;"><i class="fas fa-lock" style="font-size:3rem; color:var(--primary);"></i><h2>Caspian Portal</h2><p style="color:#888; font-size:0.9rem;">Enter Access Code</p><input type="password" id="pass-field" placeholder="Password" style="text-align:center;" onkeydown="if(event.key === 'Enter') login()"><button class="save-btn" onclick="login()">Login</button></div>`;
+            content.innerHTML = `<div class="card" style="margin-top:60px; text-align:center; margin: 60px auto; max-width: 400px;"><i class="fas fa-lock" style="font-size:3rem; color:var(--primary);"></i><h2>Caspian Portal</h2><p style="color:#888; font-size:0.9rem;">Enter Access Code</p><input type="password" id="pass-field" placeholder="Password" style="text-align:center;" onkeydown="if(event.key === 'Enter') login()"><button class="save-btn" onclick="login()">Login</button></div>`;
             document.querySelector('.bottom-nav').style.display = 'none'; return;
         }
 
@@ -152,9 +156,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const netC = parseFloat(t.netCost || 0);
                 const profit = sellP - netC;
                 
-                // Прямое чтение картинки из БД, с фоллбэком по имени
+                // ЛОГИКА ФОНОВ (ЧТЕНИЕ ПРЯМО ИЗ БАЗЫ)
                 let coverImage = t.image || ""; 
-                
                 if (!coverImage) {
                     const n = t.name.toLowerCase();
                     if (n.includes('ичеришехер') || n.includes('icherisheher') || n.includes('old city')) {
@@ -170,13 +173,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
+                // ЛОГИКА БЕЙДЖЕЙ
+                let badgeClass = 'badge-private';
+                if (t.category === 'VIP') badgeClass = 'badge-vip';
+                if (t.category === 'Group') badgeClass = 'badge-group';
+
+                // ЛОГИКА СТАТУСОВ (Зеленая/Синяя точка)
+                const statusClass = t.date ? 'status-available' : 'status-request';
+                const statusText = t.date ? 'Available' : 'On Request';
+
+                // ВЫВОД КАРТОЧКИ (С Background-Image)
                 return `
                 <div class="tour-card fade-in">
                     <div style="position: relative;">
-                        <img src="${coverImage}" class="tour-image" alt="${t.name}" onerror="this.src='https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80'">
+                        <div class="tour-image-bg" style="background-image: url('${coverImage}');"></div>
                         
                         <div style="position:absolute; top:16px; left:16px;">
-                            <span class="badge" style="background:rgba(255,255,255,0.95); box-shadow:0 2px 10px rgba(0,0,0,0.1);"><i class="fas fa-star" style="color:#f1c40f;"></i> ${t.category}</span>
+                            <span class="badge ${badgeClass}"><i class="fas fa-star" style="color:inherit;"></i> ${t.category}</span>
                         </div>
                         <div style="position:absolute; bottom:-16px; right:16px; background:var(--dark); color:white; padding:8px 20px; border-radius:25px; font-weight:800; font-size:1.1rem; box-shadow:0 4px 15px rgba(0,0,0,0.2); z-index: 2;">
                             ${t.currency==='AZN'?'₼':'$'}${sellP}
@@ -185,11 +198,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     <div class="tour-card-content">
                         <h3 style="margin-top:10px;">📍 ${t.name}</h3>
-                        <div style="font-size:0.85rem; color:#636e72; margin-top:10px;">
+                        <div style="font-size:0.85rem; color:#636e72; margin-top:10px; flex-grow:1;">
                             ${t.hotel ? `<div style="margin-bottom:4px;"><i class="fas fa-hotel" style="width:20px; color:var(--primary);"></i> ${t.hotel}</div>` : ''}
                             ${t.food ? `<div style="margin-bottom:4px;"><i class="fas fa-utensils" style="width:20px; color:var(--primary);"></i> ${t.food}</div>` : ''}
                             ${t.transport ? `<div style="margin-bottom:4px;"><i class="fas fa-car-side" style="width:20px; color:var(--primary);"></i> ${t.transport}</div>` : ''}
-                            <div><i class="far fa-clock" style="width:20px; color:var(--primary);"></i> ${formatDays(t.days)}</div>
+                            <div style="margin-bottom:4px;"><i class="far fa-clock" style="width:20px; color:var(--primary);"></i> ${formatDays(t.days)}</div>
+                            
+                            <div class="status-wrapper ${statusClass}">
+                                <span class="status-dot"></span> ${statusText}
+                            </div>
                         </div>
                         
                         ${userRole === 'admin' ? `
@@ -219,13 +236,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 listContainer.innerHTML = listHtml || '<p style="text-align:center; padding:20px; color:#999;">No routes found</p>';
             } else {
                 content.innerHTML = `
-                    <div style="padding:15px;">
+                    <div style="padding:15px 0;">
                         <h2>Routes 🗺️</h2>
                         <div style="position:relative;">
                             <i class="fas fa-search" style="position:absolute; left:15px; top:25px; color:#aaa;"></i>
                             <input type="text" id="search-input" placeholder="Search destination..." value="${searchQuery}" autocomplete="off" style="padding-left:40px;">
                         </div>
-                        <div id="tours-list" style="padding-bottom:120px;">${listHtml}</div>
+                        <div id="tours-list">${listHtml}</div>
                         ${userRole === 'admin' ? `<button class="add-tour-btn" id="add-tour-btn" aria-label="Add Route"><i class="fas fa-plus"></i></button>` : ''}
                     </div>`;
                 
@@ -262,11 +279,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             content.innerHTML = `
-                <div style="padding:15px;">
+                <div style="padding:15px 0;">
                     <h2 style="margin-bottom:5px;">Welcome, ${userRole === 'admin' ? 'Boss' : 'Partner'}! 🤝</h2>
                     <p style="color:#888; margin-top:0; font-size:0.9rem; margin-bottom:20px;">Business Overview</p>
                     
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:20px;">
+                    <div class="dashboard-grid">
                         <div class="card" style="margin:0; text-align:center; padding:15px;">
                             <div style="width:40px; height:40px; background:#e0f7f9; border-radius:10px; display:flex; align-items:center; justify-content:center; margin:0 auto 10px; color:var(--primary);">
                                 <i class="fas fa-bell"></i>
@@ -294,7 +311,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- BOOKINGS CALENDAR ---
         } else if (currentPage === 'calendar') {
-            let calHtml = `<div style="padding:15px;"><h2>Order Calendar 📅</h2><div style="padding-bottom:100px;">`;
+            let calHtml = `<div style="padding:15px 0;"><h2>Order Calendar 📅</h2><div>`;
             
             if (bookings.length === 0) {
                 calHtml += `<div class="card" style="text-align:center; color:#888;">No bookings found</div>`;
@@ -337,7 +354,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (currentPage === 'profile') {
             content.innerHTML = `
                 <div style="padding:40px 20px; text-align:center;">
-                    <div class="card" style="padding:40px 20px; border-radius:30px;">
+                    <div class="card" style="padding:40px 20px; border-radius:30px; margin: 0 auto; max-width: 400px;">
                         <div style="width:100px; height:100px; background:#f5f5f7; border-radius:50%; margin:0 auto 20px; display:flex; align-items:center; justify-content:center; border:2px solid var(--primary);">
                             <i class="${userRole === 'admin' ? 'fas fa-user-shield' : 'fas fa-user-tie'}" style="font-size:3rem; color:var(--primary);"></i>
                         </div>
@@ -352,7 +369,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showForm(data = {}) {
         currentPage = 'form';
-        document.getElementById('app-content').innerHTML = `<div class="card" style="margin-bottom:200px;">
+        document.getElementById('app-content').innerHTML = `<div class="card" style="margin-bottom:20px; max-width: 600px; margin-left: auto; margin-right: auto;">
             <h3 style="color:var(--dark);">${data.id ? 'Edit Route' : 'Create Route'}</h3>
             <input type="text" id="t-name" value="${data.name || ''}" placeholder="Destination Name (e.g. Baku)">
             

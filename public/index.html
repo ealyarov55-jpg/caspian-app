@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Caspian DMC Portal</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
 </head>
 <body>
     <header class="app-header">
@@ -16,10 +17,10 @@
     <main class="content" id="app-content"></main>
 
     <nav class="bottom-nav" style="display: none;">
-        <button onclick="render('главная')" id="nav-home"><i class="fas fa-chart-line"></i><span>Главная</span></button>
-        <button onclick="render('календарь')" id="nav-calendar"><i class="far fa-calendar-alt"></i><span>Календарь</span></button>
-        <button onclick="render('туры')" id="nav-tours"><i class="fas fa-map-marked-alt"></i><span>Туры</span></button>
-        <button onclick="render('профиль')" id="nav-profile"><i class="fas fa-user-tie"></i><span>Профиль</span></button>
+        <button onclick="render('home')" id="nav-home"><i class="fas fa-chart-line"></i><span>Home</span></button>
+        <button onclick="render('calendar')" id="nav-calendar"><i class="far fa-calendar-alt"></i><span>Calendar</span></button>
+        <button onclick="render('tours')" id="nav-tours"><i class="fas fa-map-marked-alt"></i><span>Routes</span></button>
+        <button onclick="render('profile')" id="nav-profile"><i class="fas fa-user-tie"></i><span>Profile</span></button>
     </nav>
 
     <script type="module">

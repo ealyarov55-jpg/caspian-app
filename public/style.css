@@ -16,7 +16,6 @@ body {
     padding-bottom: 80px;
 }
 
-/* Стандартная карточка (для дашборда и календаря) */
 .card {
     background: white; margin: 15px; padding: 20px;
     border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.06);
@@ -24,7 +23,6 @@ body {
 }
 .card:hover { transform: translateY(-3px); }
 
-/* НОВАЯ КАРТОЧКА ТУРА (Чистый PWA) */
 .tour-card {
     background: white; 
     margin: 16px;
@@ -36,7 +34,6 @@ body {
 }
 .tour-card:hover { transform: translateY(-3px); }
 
-/* Идеальное отображение картинок (без растягиваний) */
 .tour-image {
     width: 100%; 
     height: 180px; 
@@ -49,7 +46,6 @@ body {
     padding: 25px 16px 16px 16px; 
 }
 
-/* Элементы внутри карточки */
 .badge {
     background: #e0f7f9; color: var(--dark);
     padding: 5px 12px; border-radius: 20px;
@@ -62,7 +58,6 @@ body {
 
 h3 { margin: 0 0 10px 0; color: #2d3436; font-size: 1.2rem; font-family: 'Poppins', sans-serif; }
 
-/* КУРСОРЫ И ФОРМЫ */
 button, .bottom-nav button, select, input[type="date"] { cursor: pointer; }
 
 input, select, textarea {
@@ -89,7 +84,6 @@ input, select, textarea {
     display: flex; align-items: center; justify-content: center; gap: 8px; flex: 3;
 }
 
-/* ИДЕАЛЬНАЯ ПЛАВАЮЩАЯ КНОПКА (FAB) ВМЕСТО ПОЛОСЫ */
 .add-tour-btn {
     position: fixed;
     bottom: 90px;
@@ -111,7 +105,6 @@ input, select, textarea {
 }
 .add-tour-btn:active { transform: scale(0.95); }
 
-/* Навигация */
 .app-header {
     background: var(--grad);
     color: white; padding: 18px; text-align: center;

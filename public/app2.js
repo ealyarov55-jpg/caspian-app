@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     let isAuthenticated = false; 
     let userRole = 'guest';
-    let isAuthReady = false; 
+    let isAuthReady = false; // КРИТИЧЕСКИЙ ФЛАГ
 
     const serviceTypes = ["Hotel", "Transport", "Activity", "Guide"]; 
     const vehicleTypes = ["Sedan (up to 3 pax)", "Minivan (up to 7 pax)", "Sprinter (up to 18 pax)", "Bus (45+ pax)"];
@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return num === 1 ? '1 day' : `${num} days`;
     }
 
-    // === ИНИЦИАЛИЗАЦИЯ AUTH ===
+    // === 1. ИНИЦИАЛИЗАЦИЯ AUTH ===
     setPersistence(auth, browserLocalPersistence).then(() => {
         onAuthStateChanged(auth, (user) => {
             if (user) {
@@ -39,18 +39,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
+            // Прячем лоадер и вызываем рендер ТОЛЬКО когда ответ получен
             if (!isAuthReady) {
                 isAuthReady = true;
                 const loader = document.getElementById('auth-loader');
                 if (loader) loader.classList.add('hidden');
-                render(currentPage);
-            } else {
-                render(currentPage);
             }
+            render(currentPage);
         });
     });
 
-    // === СИНХРОНИЗАЦИЯ БАЗЫ ===
+    // === 2. СИНХРОНИЗАЦИЯ БАЗЫ ДАННЫХ ===
     onValue(ref(db, 'inventory'), (snapshot) => {
         const data = snapshot.val();
         inventory = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
@@ -77,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // === ГЛОБАЛЬНЫЕ ФУНКЦИИ ===
+    // === 3. ГЛОБАЛЬНЫЕ ФУНКЦИИ ===
     window.login = async function() {
         const email = document.getElementById('email-field').value;
         const pass = document.getElementById('pass-field').value;
@@ -86,24 +85,17 @@ document.addEventListener('DOMContentLoaded', () => {
         catch (error) { alert("Access Denied: " + error.message); }
     };
 
-    window.logout = async () => { await signOut(auth); currentPage = 'login'; };
+    window.logout = async () => { await signOut(auth); currentPage = 'login'; render('login'); };
     window.render = (page) => { currentPage = page; renderInternal(page); };
     window.setFilter = (filter) => { currentFilter = filter; render('inventory'); };
     
-    // --- ИСПРАВЛЕННАЯ ЛОГИКА УДАЛЕНИЯ (DELETE) 🗑️ ---
     window.deleteItem = (id) => { 
         if(confirm('Boss, are you sure you want to delete this service?')) {
-            remove(ref(db, `inventory/${id}`))
-                .then(() => alert("Database updated successfully!"))
-                .catch((error) => alert("Error deleting item: " + error.message));
+            remove(ref(db, `inventory/${id}`));
         }
     };
-
-    // --- ИСПРАВЛЕННАЯ ЛОГИКА РЕДАКТИРОВАНИЯ (EDIT) ✏️ ---
-    window.editItem = (id) => { 
-        editId = id; 
-        showForm(inventory.find(x => x.id === id)); 
-    };
+    
+    window.editItem = (id) => { editId = id; showForm(inventory.find(x => x.id === id)); };
     
     window.bookItem = (id) => {
         const item = inventory.find(x => x.id === id);
@@ -146,14 +138,11 @@ document.addEventListener('DOMContentLoaded', () => {
         printWindow.document.close();
     };
 
-    // --- МАТЕМАТИЧЕСКИЙ КОНТРОЛЬ ЦЕНЫ 🔢 ---
     window.calculatePrice = () => {
         const net = parseFloat(document.getElementById('t-net-cost').value || 0);
         const markup = parseFloat(document.getElementById('t-markup').value || 0);
         const sellInput = document.getElementById('t-selling-price');
-        
         if (net > 0 && markup >= 0) {
-            // Формула: Price_B2B = Cost_Net * (1 + Markup/100)
             const finalPrice = net * (1 + (markup / 100));
             sellInput.value = finalPrice.toFixed(2);
         } else {
@@ -176,22 +165,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.deleteBooking = (id) => { if (confirm('Delete this booking?')) remove(ref(db, `bookings/${id}`)); };
 
-    // === DATA SEEDER ===
+    // === ЗОЛОТОЙ ЭТАЛОН ДАННЫХ (DATA SEEDER) 🧙‍♂️📦 ===
     window.generateDemoData = async () => {
-        if (!confirm("Initialize Simulation Mode? This will inject 10 demo items into the inventory.")) return;
+        if (!confirm("Initialize Simulation Mode? This will inject 10 golden demo items into the inventory.")) return;
 
         const defaultMarkup = 15;
         const calcPrice = (net) => parseFloat((net * (1 + defaultMarkup / 100)).toFixed(2));
 
         const demoItems = [
-            { name: "Marriott Boulevard Baku", supplierName: "Absheron Hotel Group", category: "Hotel", netCost: 150, markup: defaultMarkup, sellingPrice: calcPrice(150), price: calcPrice(150), currency: "AZN", stars: "5", location: "White City", image: "baku_night.jpg", included: "Standard Room, Breakfast included, Free Wi-Fi" },
-            { name: "Fairmont Baku Flame Towers", supplierName: "Fairmont", category: "Hotel", netCost: 180, markup: defaultMarkup, sellingPrice: calcPrice(180), price: calcPrice(180), currency: "AZN", stars: "5", location: "Flame Towers", image: "baku_night.jpg", included: "Deluxe City View, Spa Access" },
-            { name: "Chenot Palace Gabala", supplierName: "Chenot", category: "Hotel", netCost: 300, markup: defaultMarkup, sellingPrice: calcPrice(300), price: calcPrice(300), currency: "AZN", stars: "5", location: "Gabala", image: "gabala_lake.jpg", included: "Wellness Retreat Package, Full Board" },
-            { name: "Hilton Baku", supplierName: "Hilton Worldwide", category: "Hotel", netCost: 160, markup: defaultMarkup, sellingPrice: calcPrice(160), price: calcPrice(160), currency: "AZN", stars: "5", location: "City Center", image: "baku_night.jpg", included: "Guest Room, 360 Bar Access" },
-            { name: "Shah Palace Hotel", supplierName: "Shah Hotels", category: "Hotel", netCost: 80, markup: defaultMarkup, sellingPrice: calcPrice(80), price: calcPrice(80), currency: "AZN", stars: "4", location: "Icherisheher", image: "icherisheher_old_city.jpg", included: "Classic Room, Traditional Breakfast" },
+            { name: "JW Marriott Absheron Baku", supplierName: "Marriott", category: "Hotel", netCost: 200, markup: defaultMarkup, sellingPrice: calcPrice(200), price: calcPrice(200), currency: "AZN", stars: "5", location: "City Center", image: "marriott.jpg", included: "Executive Room, Breakfast" },
+            { name: "Fairmont Baku Flame Towers", supplierName: "Fairmont", category: "Hotel", netCost: 180, markup: defaultMarkup, sellingPrice: calcPrice(180), price: calcPrice(180), currency: "AZN", stars: "5", location: "Flame Towers", image: "fairmont.jpg", included: "Deluxe City View, Spa Access" },
+            { name: "Gobustan & Mud Volcanoes Tour", supplierName: "Caspian Direct", category: "Activity", netCost: 90, markup: defaultMarkup, sellingPrice: calcPrice(90), price: calcPrice(90), currency: "AZN", location: "Gobustan", image: "gobustan_tour.jpg", included: "English Guide, Transport, Tickets" },
+            { name: "Chenot Palace Gabala", supplierName: "Chenot", category: "Hotel", netCost: 500, markup: defaultMarkup, sellingPrice: calcPrice(500), price: calcPrice(500), currency: "AZN", stars: "5", location: "Gabala", image: "chenot_gabala.jpg", included: "Wellness Retreat Package, Full Board" },
+            { name: "Hilton Baku", supplierName: "Hilton", category: "Hotel", netCost: 160, markup: defaultMarkup, sellingPrice: calcPrice(160), price: calcPrice(160), currency: "AZN", stars: "5", location: "City Center", image: "baku_night.jpg", included: "Guest Room, 360 Bar Access" },
             { name: "Quba Palace Hotel", supplierName: "Quba Palace", category: "Hotel", netCost: 130, markup: defaultMarkup, sellingPrice: calcPrice(130), price: calcPrice(130), currency: "AZN", stars: "5", location: "Guba", image: "guba_mountains.jpg", included: "Mountain View, Spa & Golf Access" },
-            { name: "Winter Park Hotel", supplierName: "Winter Park", category: "Hotel", netCost: 75, markup: defaultMarkup, sellingPrice: calcPrice(75), price: calcPrice(75), currency: "AZN", stars: "4", location: "City Center", image: "baku_night.jpg", included: "Superior Room, Breakfast" },
-            { name: "Premium VIP Transfer (V-Class)", supplierName: "VIP Trans", category: "Transport", netCost: 80, markup: defaultMarkup, sellingPrice: calcPrice(80), price: calcPrice(80), currency: "AZN", vehicleType: "Minivan (up to 7 pax)", capacity: "6", image: "baku_night.jpg", included: "Mercedes V-Class, Wi-Fi, Water" },
+            { name: "Shah Palace Hotel", supplierName: "Shah Hotels", category: "Hotel", netCost: 80, markup: defaultMarkup, sellingPrice: calcPrice(80), price: calcPrice(80), currency: "AZN", stars: "4", location: "Icherisheher", image: "icherisheher_old_city.jpg", included: "Classic Room, Traditional Breakfast" },
+            { name: "Premium VIP Transfer", supplierName: "VIP Trans", category: "Transport", netCost: 100, markup: defaultMarkup, sellingPrice: calcPrice(100), price: calcPrice(100), currency: "AZN", vehicleType: "V-Class", capacity: "6", image: "v_class.jpg", included: "Wi-Fi, Water" },
             { name: "Group Transfer (Sprinter)", supplierName: "Caspian Transport", category: "Transport", netCost: 120, markup: defaultMarkup, sellingPrice: calcPrice(120), price: calcPrice(120), currency: "AZN", vehicleType: "Sprinter (up to 18 pax)", capacity: "18", image: "baku_night.jpg", included: "Mercedes Sprinter, Luggage space" },
             { name: "Standard Airport Transfer", supplierName: "Caspian Transport", category: "Transport", netCost: 30, markup: defaultMarkup, sellingPrice: calcPrice(30), price: calcPrice(30), currency: "AZN", vehicleType: "Sedan (up to 3 pax)", capacity: "3", image: "baku_night.jpg", included: "Meet & Greet at Airport" }
         ];
@@ -200,7 +189,7 @@ document.addEventListener('DOMContentLoaded', () => {
             for (const item of demoItems) {
                 await push(ref(db, 'inventory'), item);
             }
-            alert("✅ Simulation data successfully injected!");
+            alert("✅ Simulation data with Golden Assets successfully injected!");
         } catch (error) {
             console.error(error);
             alert("Error injecting data: " + error.message);
@@ -211,29 +200,46 @@ document.addEventListener('DOMContentLoaded', () => {
         const ctx = document.getElementById('salesChart');
         if (!ctx) return;
         if (chartInstance) chartInstance.destroy();
+        
         const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
         const data = [120, 190, 300, 250, 420, 480, 650];
+        
         chartInstance = new Chart(ctx, {
             type: 'line', 
-            data: { labels: labels, datasets: [{ label: 'Revenue Volume', data: data, borderColor: '#00afb9', backgroundColor: 'rgba(0, 175, 185, 0.1)', borderWidth: 3, tension: 0.4, fill: true, pointBackgroundColor: '#fff', pointBorderColor: '#00afb9', pointBorderWidth: 2, pointRadius: 4, pointHoverRadius: 6 }] },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { backgroundColor: '#0B1D2A', padding: 10, titleFont: { family: 'Inter', size: 13 }, bodyFont: { family: 'Montserrat', size: 14, weight: 'bold' } } }, scales: { y: { beginAtZero: true, grid: { borderDash: [5, 5], color: '#e1e4e8', drawBorder: false }, ticks: { font: { family: 'Inter' }, color: '#888' } }, x: { grid: { display: false, drawBorder: false }, ticks: { font: { family: 'Inter' }, color: '#888' } } } }
+            data: { 
+                labels: labels, 
+                datasets: [{ 
+                    label: 'Revenue Volume', data: data, borderColor: '#00afb9', 
+                    backgroundColor: 'rgba(0, 175, 185, 0.1)', borderWidth: 3, 
+                    tension: 0.4, fill: true, pointBackgroundColor: '#fff', 
+                    pointBorderColor: '#00afb9', pointBorderWidth: 2, pointRadius: 4, pointHoverRadius: 6 
+                }] 
+            },
+            options: { 
+                responsive: true, maintainAspectRatio: false, 
+                plugins: { legend: { display: false }, tooltip: { backgroundColor: '#0B1D2A', padding: 10, titleFont: { family: 'Inter', size: 13 }, bodyFont: { family: 'Montserrat', size: 14, weight: 'bold' } } }, 
+                scales: { y: { beginAtZero: true, grid: { borderDash: [5, 5], color: '#e1e4e8', drawBorder: false }, ticks: { font: { family: 'Inter' }, color: '#888' } }, x: { grid: { display: false, drawBorder: false }, ticks: { font: { family: 'Inter' }, color: '#888' } } } 
+            }
         });
     }
 
-    // === ГЛАВНАЯ ФУНКЦИЯ РЕНДЕРИНГА ===
+    // === 4. ГЛАВНАЯ ФУНКЦИЯ РЕНДЕРИНГА ===
     function renderInternal(page) {
         if (!isAuthReady) return; 
         const content = document.getElementById('app-content');
         if (!content) return;
 
+        // Защита роутов
         if (!isAuthenticated && ['home', 'bookings', 'partners', 'profile'].includes(page)) {
             page = 'login';
             currentPage = 'login';
         }
 
+        // ПОКАЗЫВАЕМ САЙДБАР (Управляется через updateNav)
         document.querySelector('.bottom-nav').style.display = page === 'login' ? 'none' : 'flex';
         updateNav(page);
 
+        // --- БЛОК ЛОГИНА ---
         if (page === 'login') {
             content.innerHTML = `
                 <div class="login-container fade-in">
@@ -248,6 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // --- БЛОК ИНВЕНТАРЯ ---
         if (page === 'inventory') {
             let filteredInventory = inventory.filter(t => t.name.toLowerCase().includes(searchQuery.toLowerCase()));
             if (currentFilter !== 'All') {
@@ -258,7 +265,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 const sellP = parseFloat(t.sellingPrice || t.price || 0);
                 const netC = parseFloat(t.netCost || 0);
                 
-                let coverImage = t.image || "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80"; 
+                // ЗОЛОТОЙ ЭТАЛОН: Сначала берем t.image, если его нет — ищем по названию
+                let coverImage = t.image || ""; 
+                if (!coverImage) {
+                    const n = t.name.toLowerCase();
+                    if (n.includes('marriott')) coverImage = "marriott.jpg";
+                    else if (n.includes('fairmont')) coverImage = "fairmont.jpg";
+                    else if (n.includes('gobustan')) coverImage = "gobustan_tour.jpg";
+                    else if (n.includes('ичеришехер') || n.includes('icherisheher') || n.includes('old city')) coverImage = "icherisheher_old_city.jpg";
+                    else if (n.includes('габала') || n.includes('gabala') || n.includes('qabala')) coverImage = "gabala_lake.jpg";
+                    else if (n.includes('губа') || n.includes('quba') || n.includes('guba')) coverImage = "guba_mountains.jpg";
+                    else if (n.includes('баку') || n.includes('baku')) coverImage = "baku_night.jpg";
+                    else coverImage = "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80"; 
+                }
 
                 let badgeClass = 'badge-package';
                 if (t.category === 'Hotel') badgeClass = 'badge-hotel';
@@ -275,7 +294,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return `
                 <div class="tour-card fade-in">
                     <div style="position: relative;">
-                        <div class="tour-image-bg" style="background-image: url('${coverImage}');"></div>
+                        <img src="${coverImage}" loading="lazy" class="tour-image" alt="${t.name}" onerror="this.style.opacity='0'; this.style.backgroundColor='#f0f2f5';">
                         <div style="position:absolute; top:16px; left:16px;">
                             <span class="badge ${badgeClass}">${t.category}</span>
                         </div>
@@ -322,7 +341,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     
                     <div class="filter-bar">
-                        <button class="filter-btn ${currentFilter === 'All' ? 'active' : ''}" onclick="setFilter('All')">All Inventory</button>
+                        <button class="filter-btn ${currentFilter === 'All' ? 'active' : ''}" onclick="setFilter('All')">All</button>
                         <button class="filter-btn ${currentFilter === 'Hotel' ? 'active' : ''}" onclick="setFilter('Hotel')">Hotels</button>
                         <button class="filter-btn ${currentFilter === 'Transport' ? 'active' : ''}" onclick="setFilter('Transport')">Transport</button>
                         <button class="filter-btn ${currentFilter === 'Activity' ? 'active' : ''}" onclick="setFilter('Activity')">Activities</button>
@@ -340,10 +359,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 render('inventory'); 
             });
 
+        // --- БЛОК ДАШБОРДА ---
         } else if (page === 'home') {
             const newBookings = bookings.filter(b => b.status === 'new').length;
             const revenue = bookings.reduce((sum, b) => sum + Number(b.price || 0), 0);
-            const totalItems = inventory.length;
+            const totalItems = inventory.length; 
             const catalogValue = inventory.reduce((sum, t) => sum + parseFloat(t.sellingPrice || t.price || 0), 0);
             
             let recentHTML = '';
@@ -369,8 +389,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <span class="dot"></span>${statusText}
                             </div>
                         </div>
-                    </div>
-                `}).join('');
+                    </div>`}).join('');
             } else {
                 recentHTML = `<div style="text-align:center; color:#999; padding:20px; font-size:0.9rem;">No bookings yet</div>`;
             }
@@ -405,6 +424,31 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                     </div>
 
+                    <div class="metric-container">
+                        <div class="card metric-card">
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                                <div>
+                                    <div style="font-size:0.75rem; font-weight:700; color:#888; text-transform:uppercase;">NEW REQUESTS</div>
+                                    <div style="font-size:2.2rem; font-weight:800; margin:5px 0; font-family:'Montserrat', sans-serif; color:#1a1a1a;">${newBookings}</div>
+                                </div>
+                                <div style="width:48px; height:48px; background:#fff0f0; border-radius:12px; display:flex; align-items:center; justify-content:center; color:var(--danger); font-size:1.4rem;">
+                                    <i class="fas fa-bell"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card metric-card">
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                                <div>
+                                    <div style="font-size:0.75rem; font-weight:700; color:#888; text-transform:uppercase;">TOTAL VOLUME</div>
+                                    <div style="font-size:2.2rem; font-weight:800; margin:5px 0; font-family:'Montserrat', sans-serif; color:#1a1a1a;">${revenue}</div>
+                                </div>
+                                <div style="width:48px; height:48px; background:#e8f5e9; border-radius:12px; display:flex; align-items:center; justify-content:center; color:#2e7d32; font-size:1.4rem;">
+                                    <i class="fas fa-chart-line"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="card" style="margin-bottom:20px;">
                         <h4 style="margin:0 0 15px 0; color:#1a1a1a;">Sales Dynamics</h4>
                         <div style="position: relative; height: 250px; width: 100%;">
@@ -422,6 +466,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>`;
             setTimeout(initChart, 50);
 
+        // --- БЛОК БРОНИРОВАНИЙ ---
         } else if (page === 'bookings') {
             let calHtml = `<div style="padding:15px 15px 100px 15px;"><h2 style="margin-bottom: 20px;">Booking Management 📅</h2><div>`;
             if (bookings.length === 0) {
@@ -451,9 +496,17 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             content.innerHTML = calHtml + `</div></div>`;
 
+        // --- ИЗОЛИРОВАННЫЙ БЛОК ПАРТНЕРОВ ---
         } else if (page === 'partners') {
-            content.innerHTML = `<div style="padding:15px;"><h2 style="margin-bottom: 20px;">B2B Partners Directory 🤝</h2><div class="card" style="text-align:center; padding:40px; color:#888;">B2B Partners directory coming soon...</div></div>`;
+            content.innerHTML = `
+                <div style="padding:15px 15px 100px 15px;">
+                    <h2 style="margin-bottom: 20px;">B2B Partners Directory 🤝</h2>
+                    <div class="card" style="text-align:center; padding:40px; color:#888;">
+                        B2B Partners directory coming soon...
+                    </div>
+                </div>`;
 
+        // --- ИЗОЛИРОВАННЫЙ БЛОК ПРОФИЛЯ ---
         } else if (page === 'profile') {
             content.innerHTML = `
                 <div style="padding:40px 20px; text-align:center;">
@@ -474,13 +527,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- УМНАЯ ФОРМА (РЕДАКТИРОВАНИЕ/СОЗДАНИЕ) ---
+    // === 5. УМНОЕ МОДАЛЬНОЕ ОКНО ===
     function showForm(data = {}) {
         const existingModal = document.getElementById('tour-modal');
         if (existingModal) existingModal.remove();
-
-        // Меняем текст кнопки в зависимости от переданного ID
-        const buttonText = data.id ? '🔄 UPDATE ITEM' : '➕ ADD ITEM';
 
         const modalHtml = `
         <div class="modal-overlay" id="tour-modal">
@@ -555,7 +605,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     
                     <label class="input-label" style="margin-top:15px;">Image filename (from public folder)</label>
-                    <input type="text" id="t-image" value="${data.image || ''}" placeholder="e.g. baku_night.jpg">
+                    <input type="text" id="t-image" value="${data.image || ''}" placeholder="e.g. marriott.jpg">
                     
                     <label class="input-label" style="margin-top:15px;">Description / Included Services</label>
                     <textarea id="t-included" placeholder="Service description..." style="height:80px;">${data.included || ''}</textarea>
@@ -563,7 +613,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 <div class="modal-footer">
                     <button class="btn-action btn-edit" style="flex:1; padding:14px; font-weight:600;" onclick="document.getElementById('tour-modal').classList.remove('active'); setTimeout(() => document.getElementById('tour-modal').remove(), 300);">CANCEL</button>
-                    <button class="save-btn" id="save-action" data-id="${data.id || ''}" style="flex:2; margin:0; padding:14px;">${buttonText}</button>
+                    <button class="save-btn" id="save-action" data-id="${data.id || ''}" style="flex:2; margin:0; padding:14px;">💾 SAVE ITEM</button>
                 </div>
             </div>
         </div>`;
@@ -624,17 +674,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // === УМНОЕ ОБНОВЛЕНИЕ NAV БАРА (ИСПРАВЛЕНО СОСТОЯНИЕ ГОНКИ) ===
     function updateNav(page) {
+        if (!isAuthReady) return; // Предохранитель от race condition!
+
         document.querySelectorAll('.bottom-nav button').forEach(btn => btn.classList.remove('active'));
         const btnIdMap = { 'home': 'nav-home', 'calendar': 'nav-bookings', 'bookings': 'nav-bookings', 'tours': 'nav-inventory', 'inventory': 'nav-inventory', 'partners': 'nav-partners', 'profile': 'nav-profile', 'login': 'nav-login' };
         const b = document.getElementById(btnIdMap[page]); 
         if (b) b.classList.add('active');
 
-        document.getElementById('nav-home').style.display = isAuthenticated ? 'flex' : 'none';
-        document.getElementById('nav-bookings').style.display = isAuthenticated ? 'flex' : 'none';
-        document.getElementById('nav-partners').style.display = isAuthenticated ? 'flex' : 'none';
-        document.getElementById('nav-profile').style.display = isAuthenticated ? 'flex' : 'none';
-        document.getElementById('nav-logout').style.display = isAuthenticated ? 'flex' : 'none';
-        document.getElementById('nav-login').style.display = isAuthenticated ? 'none' : 'flex';
+        // Управляем видимостью кнопок ТОЛЬКО если статус авторизации известен
+        const adminBtns = ['nav-home', 'nav-bookings', 'nav-partners', 'nav-profile', 'nav-logout'];
+        adminBtns.forEach(id => {
+            const btn = document.getElementById(id);
+            if (btn) btn.style.display = isAuthenticated ? 'flex' : 'none';
+        });
+
+        const loginBtn = document.getElementById('nav-login');
+        if (loginBtn) loginBtn.style.display = isAuthenticated ? 'none' : 'flex';
     }
 });

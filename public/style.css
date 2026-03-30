@@ -20,9 +20,13 @@ h1, h2, h3, h4, .logo-text { font-family: 'Montserrat', sans-serif; font-weight:
 .metric-card { flex: 1; min-width: 240px; max-width: 300px; margin: 0; }
 
 /* === INVENTORY CARDS === */
-.tour-card { background: #ffffff; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); position: relative; transition: all 0.3s ease; border: none; display: flex; flex-direction: column; }
+.tour-card { background: #ffffff; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); position: relative; transition: all 0.3s ease; border: none; display: flex; flex-direction: column; overflow: hidden; }
 .tour-card:hover { transform: translateY(-5px); box-shadow: 0 12px 35px rgba(0,0,0,0.08); }
-.tour-image-bg { width: 100%; height: 180px; background-size: cover; background-position: center; background-repeat: no-repeat; border-radius: 16px 16px 0 0; background-color: #f0f2f5; }
+
+/* ОПТИМИЗИРОВАННЫЕ ИЗОБРАЖЕНИЯ (LAZY LOAD) */
+.tour-image { width: 100%; height: 180px; object-fit: cover; border-radius: 16px 16px 0 0; background-color: #f0f2f5; display: block; transition: opacity 0.3s ease; }
+.scroll-anchor { width: 100%; height: 20px; grid-column: 1 / -1; }
+
 .tour-card-content { padding: 25px 20px 20px 20px; flex-grow: 1; display: flex; flex-direction: column; }
 
 /* === BADGES & STATUS === */
@@ -132,36 +136,20 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--p
 .login-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,175,185,0.4); }
 .logout-nav-btn { color: #f07167 !important; }
 .logout-nav-btn:hover { background: rgba(240, 113, 103, 0.1) !important; color: #ff8fa3 !important; }
+
+/* === UX AUTH LOADER === */
 .auth-loader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--sidebar-bg); z-index: 9999; display: flex; align-items: center; justify-content: center; transition: opacity 0.4s ease, visibility 0.4s ease; }
 .auth-loader.hidden { opacity: 0; visibility: hidden; }
 .spinner { width: 50px; height: 50px; border: 4px solid rgba(255, 255, 255, 0.1); border-left-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
 /* === SIMULATION MODE BADGE === */
 .simulation-badge {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background: rgba(11, 29, 42, 0.85); /* Темный каспийский синий */
-    color: #00ffcc; /* Неоновый бирюзовый */
-    padding: 8px 16px;
-    border-radius: 8px;
-    font-family: 'Montserrat', sans-serif;
-    font-size: 0.75rem;
-    font-weight: 800;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    border: 1px solid #00ffcc;
-    box-shadow: 0 4px 15px rgba(0, 255, 204, 0.2);
-    z-index: 9999;
-    pointer-events: none; /* Не перекрывает клики */
-    backdrop-filter: blur(4px);
+    position: fixed; top: 20px; right: 20px; background: rgba(11, 29, 42, 0.85); color: #00ffcc;
+    padding: 8px 16px; border-radius: 8px; font-family: 'Montserrat', sans-serif; font-size: 0.75rem;
+    font-weight: 800; letter-spacing: 1px; text-transform: uppercase; border: 1px solid #00ffcc;
+    box-shadow: 0 4px 15px rgba(0, 255, 204, 0.2); z-index: 9999; pointer-events: none; backdrop-filter: blur(4px);
 }
-
 @media (max-width: 768px) {
-    .simulation-badge {
-        top: 15px;
-        right: 15px;
-        font-size: 0.65rem;
-        padding: 6px 12px;
-    }
+    .simulation-badge { top: 15px; right: 15px; font-size: 0.65rem; padding: 6px 12px; }
 }

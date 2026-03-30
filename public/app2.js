@@ -89,8 +89,21 @@ document.addEventListener('DOMContentLoaded', () => {
     window.logout = async () => { await signOut(auth); currentPage = 'login'; };
     window.render = (page) => { currentPage = page; renderInternal(page); };
     window.setFilter = (filter) => { currentFilter = filter; render('inventory'); };
-    window.deleteItem = (id) => { if(confirm('Delete this item from inventory?')) remove(ref(db, `inventory/${id}`)); };
-    window.editItem = (id) => { editId = id; showForm(inventory.find(x => x.id === id)); };
+    
+    // --- ИСПРАВЛЕННАЯ ЛОГИКА УДАЛЕНИЯ (DELETE) 🗑️ ---
+    window.deleteItem = (id) => { 
+        if(confirm('Boss, are you sure you want to delete this service?')) {
+            remove(ref(db, `inventory/${id}`))
+                .then(() => alert("Database updated successfully!"))
+                .catch((error) => alert("Error deleting item: " + error.message));
+        }
+    };
+
+    // --- ИСПРАВЛЕННАЯ ЛОГИКА РЕДАКТИРОВАНИЯ (EDIT) ✏️ ---
+    window.editItem = (id) => { 
+        editId = id; 
+        showForm(inventory.find(x => x.id === id)); 
+    };
     
     window.bookItem = (id) => {
         const item = inventory.find(x => x.id === id);
@@ -133,13 +146,18 @@ document.addEventListener('DOMContentLoaded', () => {
         printWindow.document.close();
     };
 
+    // --- МАТЕМАТИЧЕСКИЙ КОНТРОЛЬ ЦЕНЫ 🔢 ---
     window.calculatePrice = () => {
         const net = parseFloat(document.getElementById('t-net-cost').value || 0);
         const markup = parseFloat(document.getElementById('t-markup').value || 0);
         const sellInput = document.getElementById('t-selling-price');
+        
         if (net > 0 && markup >= 0) {
-            const finalPrice = net + (net * (markup / 100));
+            // Формула: Price_B2B = Cost_Net * (1 + Markup/100)
+            const finalPrice = net * (1 + (markup / 100));
             sellInput.value = finalPrice.toFixed(2);
+        } else {
+            sellInput.value = "";
         }
     };
 
@@ -158,16 +176,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.deleteBooking = (id) => { if (confirm('Delete this booking?')) remove(ref(db, `bookings/${id}`)); };
 
-    // === DATA SEEDER (ГЕНЕРАТОР ДЕМО-ДАННЫХ) 🧙‍♂️📦 ===
+    // === DATA SEEDER ===
     window.generateDemoData = async () => {
         if (!confirm("Initialize Simulation Mode? This will inject 10 demo items into the inventory.")) return;
 
         const defaultMarkup = 15;
-        // B2B Formula Application
         const calcPrice = (net) => parseFloat((net * (1 + defaultMarkup / 100)).toFixed(2));
 
         const demoItems = [
-            // Hotels (7 items)
             { name: "Marriott Boulevard Baku", supplierName: "Absheron Hotel Group", category: "Hotel", netCost: 150, markup: defaultMarkup, sellingPrice: calcPrice(150), price: calcPrice(150), currency: "AZN", stars: "5", location: "White City", image: "baku_night.jpg", included: "Standard Room, Breakfast included, Free Wi-Fi" },
             { name: "Fairmont Baku Flame Towers", supplierName: "Fairmont", category: "Hotel", netCost: 180, markup: defaultMarkup, sellingPrice: calcPrice(180), price: calcPrice(180), currency: "AZN", stars: "5", location: "Flame Towers", image: "baku_night.jpg", included: "Deluxe City View, Spa Access" },
             { name: "Chenot Palace Gabala", supplierName: "Chenot", category: "Hotel", netCost: 300, markup: defaultMarkup, sellingPrice: calcPrice(300), price: calcPrice(300), currency: "AZN", stars: "5", location: "Gabala", image: "gabala_lake.jpg", included: "Wellness Retreat Package, Full Board" },
@@ -175,8 +191,6 @@ document.addEventListener('DOMContentLoaded', () => {
             { name: "Shah Palace Hotel", supplierName: "Shah Hotels", category: "Hotel", netCost: 80, markup: defaultMarkup, sellingPrice: calcPrice(80), price: calcPrice(80), currency: "AZN", stars: "4", location: "Icherisheher", image: "icherisheher_old_city.jpg", included: "Classic Room, Traditional Breakfast" },
             { name: "Quba Palace Hotel", supplierName: "Quba Palace", category: "Hotel", netCost: 130, markup: defaultMarkup, sellingPrice: calcPrice(130), price: calcPrice(130), currency: "AZN", stars: "5", location: "Guba", image: "guba_mountains.jpg", included: "Mountain View, Spa & Golf Access" },
             { name: "Winter Park Hotel", supplierName: "Winter Park", category: "Hotel", netCost: 75, markup: defaultMarkup, sellingPrice: calcPrice(75), price: calcPrice(75), currency: "AZN", stars: "4", location: "City Center", image: "baku_night.jpg", included: "Superior Room, Breakfast" },
-            
-            // Transport (3 items)
             { name: "Premium VIP Transfer (V-Class)", supplierName: "VIP Trans", category: "Transport", netCost: 80, markup: defaultMarkup, sellingPrice: calcPrice(80), price: calcPrice(80), currency: "AZN", vehicleType: "Minivan (up to 7 pax)", capacity: "6", image: "baku_night.jpg", included: "Mercedes V-Class, Wi-Fi, Water" },
             { name: "Group Transfer (Sprinter)", supplierName: "Caspian Transport", category: "Transport", netCost: 120, markup: defaultMarkup, sellingPrice: calcPrice(120), price: calcPrice(120), currency: "AZN", vehicleType: "Sprinter (up to 18 pax)", capacity: "18", image: "baku_night.jpg", included: "Mercedes Sprinter, Luggage space" },
             { name: "Standard Airport Transfer", supplierName: "Caspian Transport", category: "Transport", netCost: 30, markup: defaultMarkup, sellingPrice: calcPrice(30), price: calcPrice(30), currency: "AZN", vehicleType: "Sedan (up to 3 pax)", capacity: "3", image: "baku_night.jpg", included: "Meet & Greet at Airport" }
@@ -220,7 +234,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelector('.bottom-nav').style.display = page === 'login' ? 'none' : 'flex';
         updateNav(page);
 
-        // --- БЛОК ЛОГИНА ---
         if (page === 'login') {
             content.innerHTML = `
                 <div class="login-container fade-in">
@@ -235,7 +248,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // --- БЛОК ИНВЕНТАРЯ ---
         if (page === 'inventory') {
             let filteredInventory = inventory.filter(t => t.name.toLowerCase().includes(searchQuery.toLowerCase()));
             if (currentFilter !== 'All') {
@@ -328,11 +340,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 render('inventory'); 
             });
 
-        // --- БЛОК ДАШБОРДА ---
         } else if (page === 'home') {
             const newBookings = bookings.filter(b => b.status === 'new').length;
             const revenue = bookings.reduce((sum, b) => sum + Number(b.price || 0), 0);
-            const totalItems = inventory.length; // ЖИВОЙ СЧЕТЧИК ИНВЕНТАРЯ
+            const totalItems = inventory.length;
             const catalogValue = inventory.reduce((sum, t) => sum + parseFloat(t.sellingPrice || t.price || 0), 0);
             
             let recentHTML = '';
@@ -358,7 +369,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <span class="dot"></span>${statusText}
                             </div>
                         </div>
-                    </div>`}).join('');
+                    </div>
+                `}).join('');
             } else {
                 recentHTML = `<div style="text-align:center; color:#999; padding:20px; font-size:0.9rem;">No bookings yet</div>`;
             }
@@ -383,11 +395,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="card metric-card">
                             <div style="display:flex; justify-content:space-between; align-items:flex-start;">
                                 <div>
-                                    <div style="font-size:0.75rem; font-weight:700; color:#888; text-transform:uppercase;">NEW REQUESTS</div>
-                                    <div style="font-size:2.2rem; font-weight:800; margin:5px 0; font-family:'Montserrat', sans-serif; color:#1a1a1a;">${newBookings}</div>
+                                    <div style="font-size:0.75rem; font-weight:700; color:#888; text-transform:uppercase;">CATALOG VALUE (${inventory[0]?.currency || 'AZN'})</div>
+                                    <div style="font-size:2.2rem; font-weight:800; margin:5px 0; font-family:'Montserrat', sans-serif; color:#1a1a1a;">${catalogValue}</div>
                                 </div>
                                 <div style="width:48px; height:48px; background:#fef5e7; border-radius:12px; display:flex; align-items:center; justify-content:center; color:#f39c12; font-size:1.4rem;">
-                                    <i class="fas fa-bell"></i>
+                                    <i class="fas fa-wallet"></i>
                                 </div>
                             </div>
                         </div>
@@ -399,10 +411,17 @@ document.addEventListener('DOMContentLoaded', () => {
                             <canvas id="salesChart"></canvas>
                         </div>
                     </div>
+
+                    <div class="card" style="margin:0;">
+                        <h4 style="margin:0 0 10px 0; display:flex; justify-content:space-between; align-items:center; color:#1a1a1a; border-bottom:1px solid #f0f2f5; padding-bottom:15px;">
+                            Recent Bookings 
+                            <span onclick="render('calendar')" style="font-size:0.85rem; color:var(--primary); font-weight:600; cursor:pointer; text-transform:none;">See All</span>
+                        </h4>
+                        ${recentHTML}
+                    </div>
                 </div>`;
             setTimeout(initChart, 50);
 
-        // --- БЛОК БРОНИРОВАНИЙ ---
         } else if (page === 'bookings') {
             let calHtml = `<div style="padding:15px 15px 100px 15px;"><h2 style="margin-bottom: 20px;">Booking Management 📅</h2><div>`;
             if (bookings.length === 0) {
@@ -432,17 +451,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             content.innerHTML = calHtml + `</div></div>`;
 
-        // --- ИЗОЛИРОВАННЫЙ БЛОК ПАРТНЕРОВ (HOTFIX) ---
         } else if (page === 'partners') {
-            content.innerHTML = `
-                <div style="padding:15px;">
-                    <h2 style="margin-bottom: 20px;">B2B Partners Directory 🤝</h2>
-                    <div class="card" style="text-align:center; padding:40px; color:#888;">
-                        B2B Partners directory coming soon...
-                    </div>
-                </div>`;
+            content.innerHTML = `<div style="padding:15px;"><h2 style="margin-bottom: 20px;">B2B Partners Directory 🤝</h2><div class="card" style="text-align:center; padding:40px; color:#888;">B2B Partners directory coming soon...</div></div>`;
 
-        // --- ИЗОЛИРОВАННЫЙ БЛОК ПРОФИЛЯ ---
         } else if (page === 'profile') {
             content.innerHTML = `
                 <div style="padding:40px 20px; text-align:center;">
@@ -463,9 +474,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // --- УМНАЯ ФОРМА (РЕДАКТИРОВАНИЕ/СОЗДАНИЕ) ---
     function showForm(data = {}) {
         const existingModal = document.getElementById('tour-modal');
         if (existingModal) existingModal.remove();
+
+        // Меняем текст кнопки в зависимости от переданного ID
+        const buttonText = data.id ? '🔄 UPDATE ITEM' : '➕ ADD ITEM';
 
         const modalHtml = `
         <div class="modal-overlay" id="tour-modal">
@@ -548,13 +563,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 <div class="modal-footer">
                     <button class="btn-action btn-edit" style="flex:1; padding:14px; font-weight:600;" onclick="document.getElementById('tour-modal').classList.remove('active'); setTimeout(() => document.getElementById('tour-modal').remove(), 300);">CANCEL</button>
-                    <button class="save-btn" id="save-action" data-id="${data.id || ''}" style="flex:2; margin:0; padding:14px;">💾 SAVE ITEM</button>
+                    <button class="save-btn" id="save-action" data-id="${data.id || ''}" style="flex:2; margin:0; padding:14px;">${buttonText}</button>
                 </div>
             </div>
         </div>`;
         
         document.body.insertAdjacentHTML('beforeend', modalHtml);
         toggleDynamicFields(); 
+        
         setTimeout(() => document.getElementById('tour-modal').classList.add('active'), 10);
     }
 
@@ -593,8 +609,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 tData.capacity = document.getElementById('t-capacity').value;
             }
             
-            if (editIdLocal) update(ref(db, `inventory/${editIdLocal}`), tData);
-            else push(ref(db, 'inventory'), tData);
+            if (editIdLocal) {
+                update(ref(db, `inventory/${editIdLocal}`), tData)
+                    .then(() => alert("Database updated successfully!"))
+                    .catch((error) => alert("Update failed: " + error.message));
+            } else {
+                push(ref(db, 'inventory'), tData)
+                    .then(() => alert("Database updated successfully!"))
+                    .catch((error) => alert("Save failed: " + error.message));
+            }
             
             document.getElementById('tour-modal').classList.remove('active');
             setTimeout(() => document.getElementById('tour-modal').remove(), 300);

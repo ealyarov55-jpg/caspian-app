@@ -4,14 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Caspian DMC Portal</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
 </head>
 <body>
+    <div id="auth-loader" class="auth-loader">
+        <div class="spinner"></div>
+    </div>
+
     <header class="app-header">
-        <div class="header-content"><span class="logo-text">CASPIAN<b>ROUTES</b></span></div>
+        <div class="header-content">
+            <span class="logo-text" onclick="window.render('home')" style="cursor: pointer; transition: opacity 0.2s;">CASPIAN<b>ROUTES</b></span>
+        </div>
     </header>
 
     <div class="content-area">
@@ -25,11 +34,15 @@
         <button onclick="render('calendar')" id="nav-calendar"><i class="far fa-calendar-alt"></i><span>Calendar</span></button>
         <button onclick="render('tours')" id="nav-tours"><i class="fas fa-map-marked-alt"></i><span>Routes</span></button>
         <button onclick="render('profile')" id="nav-profile"><i class="fas fa-user-tie"></i><span>Profile</span></button>
+        
+        <button onclick="render('login')" id="nav-login"><i class="fas fa-sign-in-alt"></i><span>Login</span></button>
+        <button onclick="logout()" id="nav-logout" class="logout-nav-btn"><i class="fas fa-sign-out-alt"></i><span>Logout</span></button>
     </nav>
 
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
       import { getDatabase, ref, push, set, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+      import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
       const firebaseConfig = {
         apiKey: "AIzaSyDu9U3SgE2bra7Z36bnAec5dXLhZq3KQR0",
@@ -42,6 +55,9 @@
       const app = initializeApp(firebaseConfig);
       window.db = getDatabase(app);
       window.dbFunc = { ref, push, set, onValue, remove, update };
+      
+      window.auth = getAuth(app);
+      window.authFunc = { signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence };
     </script>
     <script type="module" src="app2.js"></script>
 </body>

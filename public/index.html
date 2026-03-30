@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Caspian DMC Portal</title>
+    <title>Caspian DMC Aggregator</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
@@ -19,7 +19,7 @@
 
     <header class="app-header">
         <div class="header-content">
-            <span class="logo-text" onclick="window.render('home')" style="cursor: pointer; transition: opacity 0.2s;">CASPIAN<b>ROUTES</b></span>
+            <span class="logo-text" onclick="window.render('home')" style="cursor: pointer; transition: opacity 0.2s;">CASPIAN<b>DMC</b></span>
         </div>
     </header>
 
@@ -28,12 +28,13 @@
     </div>
 
     <nav class="bottom-nav" style="display: none;">
-        <div class="sidebar-logo">CASPIAN<b>ROUTES</b></div>
+        <div class="sidebar-logo">CASPIAN<b>DMC</b></div>
         
-        <button onclick="render('home')" id="nav-home"><i class="fas fa-chart-line"></i><span>Home</span></button>
-        <button onclick="render('calendar')" id="nav-calendar"><i class="far fa-calendar-alt"></i><span>Calendar</span></button>
-        <button onclick="render('tours')" id="nav-tours"><i class="fas fa-map-marked-alt"></i><span>Routes</span></button>
-        <button onclick="render('profile')" id="nav-profile"><i class="fas fa-user-tie"></i><span>Profile</span></button>
+        <button onclick="render('home')" id="nav-home"><i class="fas fa-chart-line"></i><span>Dashboard</span></button>
+        <button onclick="render('inventory')" id="nav-inventory"><i class="fas fa-box-open"></i><span>Inventory</span></button>
+        <button onclick="render('bookings')" id="nav-bookings"><i class="far fa-calendar-check"></i><span>Bookings</span></button>
+        <button onclick="render('partners')" id="nav-partners"><i class="fas fa-handshake"></i><span>Partners</span></button>
+        <button onclick="render('profile')" id="nav-profile"><i class="fas fa-user-shield"></i><span>Profile</span></button>
         
         <button onclick="render('login')" id="nav-login"><i class="fas fa-sign-in-alt"></i><span>Login</span></button>
         <button onclick="logout()" id="nav-logout" class="logout-nav-btn"><i class="fas fa-sign-out-alt"></i><span>Logout</span></button>
@@ -55,10 +56,9 @@
       const app = initializeApp(firebaseConfig);
       window.db = getDatabase(app);
       window.dbFunc = { ref, push, set, onValue, remove, update };
-      
       window.auth = getAuth(app);
       window.authFunc = { signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence };
     </script>
     <script type="module" src="app2.js"></script>
-</body>
+</body><div class="simulation-badge">SIMULATION MODE 2026</div>
 </html>

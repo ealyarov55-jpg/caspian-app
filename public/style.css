@@ -40,8 +40,17 @@ h1, h2, h3, h4, .logo-text { font-family: 'Montserrat', sans-serif; font-weight:
 .lang-switch span { cursor: pointer; transition: color 0.2s; padding: 0 6px; }
 .lang-switch span:hover { color: #00ffcc; }
 
+.app-header { 
+    background: var(--grad); color: white; padding: 18px 20px; 
+    position: sticky; top: 0; z-index: 100; box-shadow: 0 4px 15px rgba(0,0,0,0.05); 
+    display: flex; justify-content: space-between; align-items: center; 
+    height: 70px; box-sizing: border-box;
+}
+
 @media (max-width: 768px) {
-    .top-actions { top: 15px; right: 15px; flex-direction: column-reverse; align-items: flex-end; gap: 10px; }
+    .top-actions { top: 15px; right: 15px; gap: 8px; flex-direction: row; }
+    .lang-switch { padding: 6px 10px; font-size: 0.65rem; }
+    .logo-text { font-size: 1.2rem; max-width: 120px; display: inline-block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 }
 
 .card { background: #ffffff; margin: 15px 0; padding: 20px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); position: relative; transition: all 0.3s ease; border: none; }
@@ -80,11 +89,10 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--p
 .btn-delete { background: #fff0f0; color: var(--danger); }
 .btn-delete:hover { transform: translateY(-2px); box-shadow: 0 8px 15px rgba(240,113,103,0.2); }
 .save-btn { background: var(--grad); color: white; border: none; padding: 16px; width: 100%; border-radius: 12px; font-weight: 600; font-size: 1rem; box-shadow: 0 4px 15px rgba(0,175,185,0.3); transition: all 0.3s ease; }
-.save-btn:hover { transform: translateY(-2px); filter: brightness(1.05); box-shadow: 0 8px 20px rgba(0,175,185,0.4); }
+.save-btn:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.05); box-shadow: 0 8px 20px rgba(0,175,185,0.4); }
 
 #tours-list { display: grid; grid-template-columns: 1fr; gap: 24px; padding-bottom: 100px; margin-top: 15px; }
 
-.app-header { background: var(--grad); color: white; padding: 18px; text-align: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
 .sidebar-logo { display: none; }
 .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(255,255,255,0.98); backdrop-filter: blur(10px); display: flex; justify-content: space-around; align-items: center; padding: 12px 0; border-top: 1px solid #f0f0f0; z-index: 2000; }
 .bottom-nav button { background: none; border: none; color: #a0aab2; font-size: 0.75rem; display: flex; flex-direction: column; align-items: center; font-family: 'Inter', sans-serif; transition: 0.3s ease; width: 100%; }
@@ -109,44 +117,60 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--p
 }
 @media (min-width: 1024px) { #tours-list { grid-template-columns: repeat(3, 1fr); } }
 
-/* === MODAL POP-UP (STRICT RESPONSIVE FIX) === */
+/* === ИДЕАЛЬНАЯ МОДАЛКА (SCROLL FIX & STICKY ELEMENTS) === */
 .modal-overlay { 
     position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
     background: rgba(11, 29, 42, 0.6); backdrop-filter: blur(5px); 
     display: flex; align-items: center; justify-content: center; 
     z-index: 3000; opacity: 0; visibility: hidden; transition: all 0.3s ease; 
-    padding: 15px; 
+    padding: 10px; 
     box-sizing: border-box;
 }
 .modal-overlay.active { opacity: 1; visibility: visible; }
+
 .modal-content { 
-    background: #ffffff; width: 100%; max-width: 600px; 
-    max-height: 90vh; /* СТРОГОЕ ОГРАНИЧЕНИЕ ВЫСОТЫ */
-    border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); 
-    display: flex; flex-direction: column; 
+    background: #ffffff; 
+    width: 95%; 
+    max-width: 600px; 
+    max-height: 90vh !important; /* Жестко ограничили высоту экраном */
+    border-radius: 20px; 
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1); 
+    display: block !important; /* Убили флекс, чтобы заработал скролл */
+    overflow-y: auto !important; /* Контейнер прокручивается */
     transform: translateY(30px); transition: all 0.3s ease; 
-    overflow: hidden; 
 }
 .modal-overlay.active .modal-content { transform: translateY(0); }
+
+/* ФОРМА (Чтобы sticky работал, она должна занимать 100%) */
+#service-form {
+    display: block;
+    min-height: 100%;
+}
+
+/* ФИКСИРОВАННАЯ ШАПКА */
 .modal-header { 
+    position: sticky; top: 0; 
     padding: 20px 25px; border-bottom: 1px solid #f0f2f5; 
     display: flex; justify-content: space-between; align-items: center; 
-    background: #fff; z-index: 10;
+    background: #fff; z-index: 20; 
 }
 .modal-header h2 { margin: 0; font-size: 1.4rem; color: #1a1a1a; font-family: 'Montserrat', sans-serif;}
 .modal-close { background: none; border: none; font-size: 1.5rem; color: #a0aab2; cursor: pointer; transition: 0.2s; padding: 0; width: auto; height: auto; }
 .modal-close:hover { color: var(--danger); transform: scale(1.1); }
+
+/* КОНТЕНТ ФОРМЫ */
 .modal-body { 
-    padding: 25px; 
-    overflow-y: auto; /* СКРОЛЛ ДЛЯ КОНТЕНТА */
-    flex-grow: 1; 
+    padding: 20px 25px; 
 }
+
+/* ФИКСИРОВАННЫЙ ПОДВАЛ (По твоему ТЗ) */
 .modal-footer { 
+    position: sticky; bottom: -1px; /* -1px убирает микро-щель в мобильных браузерах */
     padding: 20px 25px; border-top: 1px solid #f0f2f5; 
     display: flex; gap: 15px; background: #f8f9fa; 
-    position: sticky; bottom: 0; /* ПРИЛИПАЮЩИЙ ПОДВАЛ */
-    z-index: 10;
+    z-index: 20;
 }
+
 .input-label { font-size: 0.85rem; font-weight: 600; color: #555; margin-bottom: 5px; margin-top: 15px; display: block; font-family: 'Inter', sans-serif; }
 .input-label:first-child { margin-top: 0; }
 

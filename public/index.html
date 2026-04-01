@@ -46,20 +46,27 @@
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
       import { getDatabase, ref, push, set, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
       import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+      import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
       const firebaseConfig = {
         apiKey: "AIzaSyDu9U3SgE2bra7Z36bnAec5dXLhZq3KQR0",
         authDomain: "caspianapp-c5d1c.firebaseapp.com",
         projectId: "caspianapp-c5d1c",
-        databaseURL: "https://caspianapp-c5d1c-default-rtdb.firebaseio.com/", 
+        databaseURL: "https://caspianapp-c5d1c-default-rtdb.firebaseio.com/",
+        storageBucket: "caspianapp-c5d1c.firebasestorage.app", // <--- КРИТИЧЕСКИЙ ФИКС ЗДЕСЬ
         appId: "1:17997434765:web:fe856309a8c687d8aef7c4"
       };
 
       const app = initializeApp(firebaseConfig);
+      
       window.db = getDatabase(app);
       window.dbFunc = { ref, push, set, onValue, remove, update };
+      
       window.auth = getAuth(app);
       window.authFunc = { signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence };
+      
+      window.storage = getStorage(app);
+      window.storageFunc = { storageRef, uploadBytes, getDownloadURL };
     </script>
     <script type="module" src="app2.js"></script>
 </body>

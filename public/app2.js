@@ -2,9 +2,11 @@ import { calculateDashboardStats } from './analytics.js';
 import { loadLanguage, applyTranslations, getCurrentLang, t } from './i18n.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
-    const { db, dbFunc, auth, authFunc } = window;
+    const { db, dbFunc, auth, authFunc, storage, storageFunc } = window;
     const { ref, push, set, onValue, remove, update } = dbFunc;
     const { signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } = authFunc;
+    
+    const { storageRef, uploadBytes, getDownloadURL } = storageFunc || {};
 
     let inventory = []; 
     let bookings = []; 
@@ -13,7 +15,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentPage = 'home'; 
     let isAuthReady = false; 
 
-    // === ИНИЦИАЛИЗАЦИЯ ЯЗЫКА ===
     try { await loadLanguage(getCurrentLang()); } 
     catch (e) { console.error("i18n init error:", e); }
 
@@ -40,7 +41,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         catch (e) { console.error("Logout error:", e); }
     };
 
-    // === ЛОГИН (ЗАЩИТА ОТ 400 И ПЕРЕЗАГРУЗКИ) ===
     window.login = async function(e) {
         if (e) e.preventDefault(); 
         const emailInput = document.getElementById('email-field');
@@ -55,7 +55,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         catch (error) { alert("Access Denied: " + error.message); }
     };
 
-    // === ИНИЦИАЛИЗАЦИЯ AUTH ===
     try {
         await setPersistence(auth, browserLocalPersistence);
         onAuthStateChanged(auth, (user) => {
@@ -81,7 +80,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     } catch (e) { console.error("Auth error:", e); }
 
-    // === СЛУШАТЕЛИ БАЗЫ (РЕАКТИВНОСТЬ) ===
     try {
         onValue(ref(db, 'inventory'), (snapshot) => {
             const data = snapshot.val();
@@ -96,7 +94,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     } catch (e) { console.error("Firebase error:", e); }
 
-    // === ГЛАВНЫЙ РЕНДЕР ===
     function renderInternal(page) {
         if (!isAuthReady) return; 
         const content = document.getElementById('app-content');
@@ -265,7 +262,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // === ИДЕАЛЬНАЯ МОДАЛЬНАЯ ФОРМА (С ЖЕСТКИМИ ID И СКРОЛЛОМ) ===
+    // === ИДЕАЛЬНАЯ МОДАЛКА (Scroll + Sticky + Math Engine) ===
     window.showForm = function(data = {}) {
         const existingModal = document.getElementById('tour-modal');
         if (existingModal) existingModal.remove();
@@ -275,39 +272,27 @@ document.addEventListener('DOMContentLoaded', async () => {
             const marginField = document.getElementById('marja-input');
             const sellingField = document.getElementById('satis-input');
             
-            const net = parseFloat(netField.value) || 0;
-            const margin = parseFloat(marginField.value) || 0;
+            if (!netField || !marginField || !sellingField) return;
+
+            const netStr = netField.value.trim();
+            const marginStr = marginField.value.trim();
             
-            if (net > 0 && margin >= 0) {
+            const net = netStr === '' ? NaN : parseFloat(netStr);
+            const margin = marginStr === '' ? 0 : parseFloat(marginStr);
+            
+            if (!isNaN(net) && net > 0) {
                 const total = net + (net * margin / 100);
                 sellingField.value = total.toFixed(2);
             } else {
                 sellingField.value = '';
-            }
-            window.validateForm();
-        };
-
-        window.validateForm = () => {
-            const name = document.getElementById('t-name').value.trim();
-            const net = document.getElementById('xalis-input').value;
-            const margin = document.getElementById('marja-input').value;
-            const saveBtn = document.getElementById('save-btn');
-            
-            if (name !== '' && net !== '' && margin !== '') {
-                saveBtn.disabled = false;
-                saveBtn.style.opacity = '1';
-                saveBtn.style.cursor = 'pointer';
-            } else {
-                saveBtn.disabled = true;
-                saveBtn.style.opacity = '0.5';
-                saveBtn.style.cursor = 'not-allowed';
             }
         };
 
         const modalHtml = `
         <div class="modal-overlay" id="tour-modal">
             <div class="modal-content">
-                <form id="service-form" onsubmit="window.saveItem(event, '${data.id || ''}')">
+                <form id="service-form" onsubmit="window.handleFinalSave(event, '${data.id || ''}')" novalidate>
+                    
                     <div class="modal-header">
                         <h2 data-i18n="add_service">${data.id ? t('add_service') : t('add_service')}</h2>
                         <button type="button" class="modal-close" onclick="document.getElementById('tour-modal').remove()"><i class="fas fa-times"></i></button>
@@ -315,12 +300,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     
                     <div class="modal-body">
                         <label class="input-label" data-i18n="service_name">Service Name</label>
-                        <input type="text" id="t-name" value="${data.name || ''}" oninput="window.validateForm()" required>
+                        <input type="text" id="t-name" value="${data.name || ''}">
                         
                         <div style="display:flex; gap:15px;">
                             <div style="flex:1;">
                                 <label class="input-label" data-i18n="supplier_name">Supplier Name</label>
-                                <input type="text" id="t-supplier" value="${data.supplierName || ''}" required>
+                                <input type="text" id="t-supplier" value="${data.supplierName || ''}">
                             </div>
                             <div style="flex:1;">
                                 <label class="input-label" data-i18n="service_type">Service Type</label>
@@ -336,32 +321,28 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <span data-i18n="verified_status">Verified Partner Status</span>
                         </label>
                         
+                        <label class="input-label" data-i18n="image_filename">Upload Image</label>
+                        <input type="file" id="service-image" accept="image/*" style="padding: 10px; margin-bottom: 15px; border: 1px solid #e1e4e8; border-radius: 8px; width: 100%; box-sizing: border-box;">
+
                         <h4 data-i18n="pricing_engine" style="margin:25px 0 10px 0; font-size:1.1rem; border-bottom:1px solid #eee; padding-bottom:5px;">Pricing Engine</h4>
                         
-                        <div style="display:flex; gap:15px;">
-                            <div style="flex:1;">
-                                <label class="input-label" data-i18n="rack_rate">Rack Rate</label>
-                                <input type="number" id="t-rack-rate" value="${data.rackRate || ''}" required>
-                            </div>
-                            <div style="flex:1;">
-                                <label class="input-label" data-i18n="net_label">Net Cost (Xalis)</label>
-                                <input type="number" id="xalis-input" value="${data.netCost || ''}" oninput="window.calculatePrice()" required>
-                            </div>
-                        </div>
+                        <label class="input-label" data-i18n="rack_rate" style="margin-top:5px;">Rack Rate</label>
+                        <input type="number" id="t-rack-rate" value="${data.rackRate || ''}">
                         
-                        <div style="display:flex; gap:15px; margin-top:10px;">
+                        <div style="display:flex; gap:10px; margin-top:10px;">
                             <div style="flex:1;">
-                                <label class="input-label">${t('margin_label')} (Marja %)</label>
-                                <input type="number" id="marja-input" value="${data.markup || ''}" oninput="window.calculatePrice()" required>
+                                <label class="input-label" data-i18n="net_label" style="margin-top:0;">Net (Xalis)</label>
+                                <input type="number" id="xalis-input" value="${data.netCost || ''}" oninput="window.calculatePrice()">
                             </div>
                             <div style="flex:1;">
-                                <label class="input-label" data-i18n="selling_price">Selling Price</label>
-                                <input type="number" id="satis-input" value="${data.sellingPrice || ''}" readonly style="background:#f9f9f9; color:#333; font-weight:bold; cursor:not-allowed;">
+                                <label class="input-label" style="margin-top:0;">${t('margin_label')} (%)</label>
+                                <input type="number" id="marja-input" value="${data.markup || ''}" oninput="window.calculatePrice()" placeholder="0">
+                            </div>
+                            <div style="flex:1;">
+                                <label class="input-label" data-i18n="selling_price" style="margin-top:0;">Selling</label>
+                                <input type="number" id="satis-input" value="${data.sellingPrice || ''}" readonly style="background:#f5f5f7; color:#333; font-weight:bold; cursor:not-allowed;">
                             </div>
                         </div>
-
-                        <label class="input-label" data-i18n="image_filename">Image filename</label>
-                        <input type="text" id="t-image" value="${data.image || ''}">
                         
                         <label class="input-label" data-i18n="description">Description</label>
                         <textarea id="t-included" style="height:80px;">${data.included || ''}</textarea>
@@ -369,7 +350,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     
                     <div class="modal-footer">
                         <button type="button" class="btn-action btn-edit" style="flex:1; padding:14px;" onclick="document.getElementById('tour-modal').remove()" data-i18n="cancel">CANCEL</button>
-                        <button type="submit" class="save-btn" id="save-btn" style="flex:2; padding:14px; opacity:0.5; cursor:not-allowed;" disabled data-i18n="save_item">SAVE ITEM</button>
+                        <button type="submit" class="save-btn" id="save-btn" style="flex:2; padding:14px;" data-i18n="save_item">SAVE ITEM</button>
                     </div>
                 </form>
             </div>
@@ -377,41 +358,80 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         document.body.insertAdjacentHTML('beforeend', modalHtml);
         applyTranslations();
-        if (data.id) window.validateForm();
         setTimeout(() => document.getElementById('tour-modal').classList.add('active'), 10);
     }
 
-    // === СОХРАНЕНИЕ УСЛУГИ ===
-    window.saveItem = function(e, editIdLocal) {
+    // === СОХРАНЕНИЕ ДАННЫХ (STORAGE + RTDB + ERROR HANDLING) ===
+    window.handleFinalSave = async function(e, editIdLocal) {
         e.preventDefault(); 
         
-        const sPrice = parseFloat(document.getElementById('satis-input').value);
-        const nCost = parseFloat(document.getElementById('xalis-input').value || 0);
-        const markup = parseFloat(document.getElementById('marja-input').value || 0);
+        const saveBtn = document.getElementById('save-btn');
+        const originalText = saveBtn ? saveBtn.innerHTML : 'SAVE ITEM';
         
-        if (isNaN(sPrice) || isNaN(nCost)) return alert("Please calculate prices correctly.");
+        const nameField = document.getElementById('t-name').value.trim();
+        const netInputStr = document.getElementById('xalis-input').value.trim();
+        const marginInputStr = document.getElementById('marja-input').value.trim();
+        
+        if (!nameField) return alert("Забыли ввести название услуги!");
+        if (!netInputStr) return alert("Забыли ввести Xalis (Нетто)!");
+        
+        const nCost = parseFloat(netInputStr);
+        const markup = marginInputStr === '' ? 0 : parseFloat(marginInputStr);
+        const sPrice = nCost + (nCost * markup / 100);
 
-        const tData = {
-            name: document.getElementById('t-name').value, 
-            supplierName: document.getElementById('t-supplier').value,
-            category: document.getElementById('t-category').value,
-            rackRate: parseFloat(document.getElementById('t-rack-rate').value || 0),
-            netCost: nCost, 
-            markup: markup,
-            sellingPrice: sPrice, 
-            price: sPrice, 
-            image: document.getElementById('t-image').value || "",
-            included: document.getElementById('t-included').value || "",
-            is_verified: document.getElementById('t-verified').checked, 
-            currency: 'AZN'
-        };
-        
-        if (editIdLocal) {
-            update(ref(db, `inventory/${editIdLocal}`), tData);
-        } else {
-            push(ref(db, 'inventory'), tData);
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Загрузка...';
         }
-        
-        document.getElementById('tour-modal').remove();
+
+        try {
+            let finalImageUrl = "";
+
+            if (editIdLocal) {
+                const existingItem = inventory.find(x => x.id === editIdLocal);
+                if (existingItem && existingItem.image) finalImageUrl = existingItem.image;
+            }
+
+            const fileInput = document.getElementById('service-image');
+            if (fileInput && fileInput.files.length > 0 && storageRef) {
+                const file = fileInput.files[0];
+                const imageReference = storageRef(storage, `inventory/${Date.now()}_${file.name}`);
+                const uploadResult = await uploadBytes(imageReference, file);
+                finalImageUrl = await getDownloadURL(uploadResult.ref);
+            }
+
+            const tData = {
+                name: nameField, 
+                supplierName: document.getElementById('t-supplier').value,
+                category: document.getElementById('t-category').value,
+                rackRate: parseFloat(document.getElementById('t-rack-rate').value || 0),
+                netCost: nCost, 
+                markup: markup,
+                sellingPrice: sPrice, 
+                price: sPrice, 
+                image: finalImageUrl, 
+                included: document.getElementById('t-included').value || "",
+                is_verified: document.getElementById('t-verified').checked, 
+                currency: 'AZN'
+            };
+            
+            // Запись в базу (RTDB)
+            if (editIdLocal) {
+                await update(ref(db, `inventory/${editIdLocal}`), tData);
+            } else {
+                await push(ref(db, 'inventory'), tData);
+            }
+            
+            const modal = document.getElementById('tour-modal');
+            if (modal) modal.remove();
+
+        } catch (err) {
+            console.error("Ошибка сохранения:", err);
+            alert("Ошибка: " + err.message);
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = originalText;
+            }
+        }
     };
 });

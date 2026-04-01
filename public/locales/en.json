@@ -1,0 +1,13 @@
+{
+  "dashboard": "Dashboard", "inventory": "Inventory", "nav_bookings": "Bookings",
+  "nav_partners": "Partners", "nav_profile": "Profile", "nav_login": "Login", "logout": "Logout",
+  "total_volume": "Total Volume (Net)", "saved_commissions": "Saved B2B Commissions",
+  "total_inventory": "Total Inventory", "welcome": "Welcome, Boss! 🤝",
+  "search_placeholder": "Search Service Or Supplier...", "under_construction": "Section Under Construction",
+  "add_service": "Add Service", "net_label": "Net", "margin_label": "Margin",
+  "hotel": "Hotel", "transport": "Transport", "activity": "Activity",
+  "service_name": "Service Name", "supplier_name": "Supplier Name", "service_type": "Service Type",
+  "verified_status": "Verified Partner Status", "pricing_engine": "Pricing Engine",
+  "rack_rate": "Rack Rate", "selling_price": "Selling Price", "image_filename": "Image filename",
+  "description": "Description", "cancel": "CANCEL", "save_item": "SAVE ITEM"
+}

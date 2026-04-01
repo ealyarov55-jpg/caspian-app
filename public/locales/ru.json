@@ -1,0 +1,13 @@
+{
+  "dashboard": "Дашборд", "inventory": "Инвентарь", "nav_bookings": "Бронирования",
+  "nav_partners": "Партнеры", "nav_profile": "Профиль", "nav_login": "Вход", "logout": "Выйти",
+  "total_volume": "Общий Объем (Net)", "saved_commissions": "Сэкономлено На Комиссии",
+  "total_inventory": "Всего В Инвентаре", "welcome": "Добро Пожаловать, Босс! 🤝",
+  "search_placeholder": "Поиск Услуги Или Партнера...", "under_construction": "Раздел В Разработке",
+  "add_service": "Добавить Услугу", "net_label": "Нетто", "margin_label": "Маржа",
+  "hotel": "Отель", "transport": "Транспорт", "activity": "Активность",
+  "service_name": "Название Услуги", "supplier_name": "Имя Поставщика", "service_type": "Тип Услуги",
+  "verified_status": "Статус Проверенного Партнера", "pricing_engine": "Механизм Ценообразования",
+  "rack_rate": "Открытая Цена", "selling_price": "Цена Продажи", "image_filename": "Имя файла фото",
+  "description": "Описание", "cancel": "ОТМЕНА", "save_item": "СОХРАНИТЬ"
+}

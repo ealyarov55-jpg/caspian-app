@@ -4,42 +4,42 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Caspian DMC Aggregator</title>
+    <link rel="icon" href="data:,">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
     <link rel="stylesheet" href="style.css">
-    <link rel="manifest" href="manifest.json">
 </head>
 <body>
-    <div id="auth-loader" class="auth-loader">
-        <div class="spinner"></div>
-    </div>
+    <div id="auth-loader" class="auth-loader"><div class="spinner"></div></div>
 
-    <div class="simulation-badge">SIMULATION MODE 2026</div>
+    <div class="top-actions" id="top-actions">
+        <div class="lang-switch">
+            <span onclick="window.setLanguage('en')">EN</span> | 
+            <span onclick="window.setLanguage('az')">AZ</span> | 
+            <span onclick="window.setLanguage('ru')">RU</span>
+        </div>
+        <div id="dynamic-header-actions"></div>
+    </div>
 
     <header class="app-header">
         <div class="header-content">
-            <span class="logo-text" onclick="window.render('home')" style="cursor: pointer; transition: opacity 0.2s;">CASPIAN<b>DMC</b></span>
+            <span class="logo-text" onclick="window.render('home')" style="cursor: pointer;">CASPIAN<b>DMC</b></span>
         </div>
     </header>
 
-    <div class="content-area">
-        <main class="content" id="app-content"></main>
-    </div>
+    <div class="content-area"><main class="content" id="app-content"></main></div>
 
     <nav class="bottom-nav" style="display: none;">
         <div class="sidebar-logo">CASPIAN<b>DMC</b></div>
+        <button onclick="window.render('home')" id="nav-home"><i class="fas fa-chart-line"></i><span data-i18n="dashboard">Dashboard</span></button>
+        <button onclick="window.render('inventory')" id="nav-inventory"><i class="fas fa-box-open"></i><span data-i18n="inventory">Inventory</span></button>
+        <button onclick="window.render('bookings')" id="nav-bookings"><i class="far fa-calendar-check"></i><span data-i18n="nav_bookings">Bookings</span></button>
+        <button onclick="window.render('partners')" id="nav-partners"><i class="fas fa-handshake"></i><span data-i18n="nav_partners">Partners</span></button>
         
-        <button onclick="render('home')" id="nav-home"><i class="fas fa-chart-line"></i><span>Dashboard</span></button>
-        <button onclick="render('inventory')" id="nav-inventory"><i class="fas fa-box-open"></i><span>Inventory</span></button>
-        <button onclick="render('bookings')" id="nav-bookings"><i class="far fa-calendar-check"></i><span>Bookings</span></button>
-        <button onclick="render('partners')" id="nav-partners"><i class="fas fa-handshake"></i><span>Partners</span></button>
-        <button onclick="render('profile')" id="nav-profile"><i class="fas fa-user-shield"></i><span>Profile</span></button>
-        
-        <button onclick="render('login')" id="nav-login"><i class="fas fa-sign-in-alt"></i><span>Login</span></button>
-        <button onclick="logout()" id="nav-logout" class="logout-nav-btn"><i class="fas fa-sign-out-alt"></i><span>Logout</span></button>
+        <button onclick="window.render('profile')" id="nav-profile" style="display: none;"><i class="fas fa-user-shield"></i><span data-i18n="nav_profile">Profile</span></button>
+        <button onclick="window.render('login')" id="nav-login" style="display: none;"><i class="fas fa-sign-in-alt"></i><span data-i18n="nav_login">Login</span></button>
+        <button onclick="window.logout()" id="nav-logout" class="logout-nav-btn" style="display: none;"><i class="fas fa-sign-out-alt"></i><span data-i18n="logout">Logout</span></button>
     </nav>
 
     <script type="module">

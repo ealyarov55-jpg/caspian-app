@@ -10,30 +10,33 @@
 }
 
 body { font-family: 'Inter', sans-serif; background-color: var(--bg); margin: 0; padding: 0; color: #333; overflow-x: hidden; }
-h1, h2, h3, h4, .logo-text { font-family: 'Montserrat', sans-serif; font-weight: 700; }
-.logo-text:hover { opacity: 0.8; }
+h1, h2, h3, h4 { font-family: 'Montserrat', sans-serif; font-weight: 700; }
 
-/* FIX [02.04.2026]: Глобальный фиксированный Header */
+/* FIX [02.04.2026]: Глобальный фиксированный Header с правильным распределением пространства */
 .app-header { 
     background: var(--grad); color: white; padding: 10px 20px; 
     position: fixed; top: 0; left: 0; z-index: 2500; box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
     display: flex; justify-content: space-between; align-items: center; 
     height: 70px; box-sizing: border-box; width: 100%;
 }
-.header-left { padding-left: 10px; display: flex; align-items: center; }
-.header-right { display: flex; align-items: center; gap: 15px; position: relative; }
+.header-left { padding-left: 5px; display: flex; align-items: center; flex-shrink: 0; }
+.header-right { display: flex; align-items: center; justify-content: flex-end; gap: 15px; flex-grow: 1; position: relative; }
 
-/* FIX [02.04.2026]: Настройки Dropdown, управляемого через JS */
-.lang-dropdown { position: relative; display: flex; align-items: center; cursor: pointer; height: 100%; }
-.lang-dropdown .dropbtn { font-size: 1.4rem; color: white; transition: 0.3s ease; pointer-events: auto; } /* Добавлен pointer-events: auto для кликабельности глобуса */
+/* FIX [02.04.2026]: Полный логотип без обрезки */
+.logo-text { font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 1.4rem; cursor: pointer; display: inline-block; transition: 0.2s ease; }
+.logo-text:hover { opacity: 0.8; }
+
+.lang-dropdown { position: relative; display: flex; align-items: center; cursor: pointer; height: 100%; flex-shrink: 0; }
+.lang-dropdown .dropbtn { font-size: 1.5rem; color: white; transition: 0.3s ease; pointer-events: auto; } 
 .lang-dropdown:hover .dropbtn { color: #00ffcc; transform: scale(1.1); }
 
+/* Выпадающее меню жестко скрыто, пока нет класса show-menu */
 .dropdown-content {
     display: none; position: absolute; right: 0; top: 40px; background-color: #ffffff; 
     min-width: 80px; box-shadow: 0px 10px 30px rgba(0,0,0,0.3); z-index: 9999; 
     border-radius: 12px; overflow: hidden; border: 1px solid #f0f2f5;
 }
-.dropdown-content.show-menu { display: block; } /* Управляется скриптом JS */
+.dropdown-content.show-menu { display: block !important; } 
 
 .dropdown-content span {
     color: #333; padding: 14px 16px; text-decoration: none; display: block; 
@@ -50,23 +53,23 @@ h1, h2, h3, h4, .logo-text { font-family: 'Montserrat', sans-serif; font-weight:
 /* Планшеты */
 @media (max-width: 768px) {
     .app-header { padding: 10px 15px; }
-    /* Возвращаем логотипу полную видимость */
-    .logo-text { font-size: 1.15rem; display: inline-block; white-space: nowrap; }
+    .logo-text { font-size: 1.2rem; }
     .header-right { gap: 15px; }
 }
 
 /* Мобильные экраны (< 600px) */
 @media (max-width: 600px) {
-    .logo-text { font-size: 1.05rem; } /* Уменьшаем шрифт, чтобы поместилось */
-    .header-right { gap: 10px; }
+    .logo-text { font-size: 1.1rem; } 
+    .header-right { gap: 12px; }
     
-    /* FIX [02.04.2026]: Кнопка Add Service превращается в круглый плюс */
-    #dynamic-header-actions span { display: none !important; }
+    /* FIX [02.04.2026]: Круглая кнопка без текста */
+    #dynamic-header-actions button span { display: none !important; }
     #dynamic-header-actions button { 
         padding: 0 !important; border-radius: 50% !important; margin: 0 !important; 
-        width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; 
+        width: 40px !important; height: 40px !important; display: flex !important; 
+        align-items: center; justify-content: center; flex-shrink: 0;
     }
-    #dynamic-header-actions button i { margin: 0 !important; font-size: 1.1rem; }
+    #dynamic-header-actions button i { margin: 0 !important; font-size: 1.2rem; }
 }
 
 .card { background: #ffffff; margin: 15px 0; padding: 20px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); position: relative; transition: all 0.3s ease; border: none; }

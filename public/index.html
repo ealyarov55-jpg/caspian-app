@@ -3,6 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    
     <title>Caspian DMC Aggregator</title>
     <link rel="icon" href="data:,">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
@@ -59,29 +63,23 @@
             const langMenu = document.getElementById('langMenu');
             const langItems = langMenu.querySelectorAll('span');
 
-            // 1. Открытие/закрытие меню по клику на глобус
             langBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 langMenu.classList.toggle('show-menu');
             });
 
-            // 2. Скрытие меню при клике в любое другое место
             document.addEventListener('click', () => {
                 if (langMenu.classList.contains('show-menu')) {
                     langMenu.classList.remove('show-menu');
                 }
             });
 
-            // 3. Обработка клика по конкретному языку (Event Listeners)
             langItems.forEach(item => {
                 item.addEventListener('click', (e) => {
                     e.stopPropagation();
                     const selectedLang = e.target.getAttribute('data-lang');
-                    
-                    if (window.setLanguage) {
-                        window.setLanguage(selectedLang); // Вызов функции i18n
-                    }
-                    langMenu.classList.remove('show-menu'); // Сразу закрываем меню
+                    if (window.setLanguage) window.setLanguage(selectedLang);
+                    langMenu.classList.remove('show-menu');
                 });
             });
         });
@@ -98,7 +96,7 @@
         authDomain: "caspianapp-c5d1c.firebaseapp.com",
         projectId: "caspianapp-c5d1c",
         databaseURL: "https://caspianapp-c5d1c-default-rtdb.firebaseio.com/",
-        storageBucket: "caspianapp-c5d1c.firebasestorage.app", // <--- КРИТИЧЕСКИЙ ФИКС ЗДЕСЬ
+        storageBucket: "caspianapp-c5d1c.firebasestorage.app", 
         appId: "1:17997434765:web:fe856309a8c687d8aef7c4"
       };
 
@@ -113,6 +111,6 @@
       window.storage = getStorage(app);
       window.storageFunc = { storageRef, uploadBytes, getDownloadURL };
     </script>
-    <script type="module" src="app2.js"></script>
+    <script type="module" src="app2.js?v=02042026"></script>
 </body>
 </html>

@@ -1,6 +1,20 @@
 import { calculateDashboardStats } from './analytics.js';
 import { loadLanguage, applyTranslations, getCurrentLang, t } from './i18n.js';
 
+// FIX [02.04.2026]: Очистка устаревшего кэша и Service Workers (Hard Reset для конфликтов)
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for(let registration of registrations) {
+            registration.unregister(); 
+        }
+    }).catch(err => console.warn("SW cleanup:", err));
+}
+if (window.caches) {
+    caches.keys().then(names => {
+        for (let name of names) caches.delete(name);
+    }).catch(err => console.warn("Caches cleanup:", err));
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     const { db, dbFunc, auth, authFunc, storage, storageFunc } = window;
     const { ref, push, set, onValue, remove, update } = dbFunc;
@@ -160,8 +174,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             else if (page === 'inventory') {
-                let filteredInventory = inventory.filter(x => (x.name || '').toLowerCase().includes(searchQuery.toLowerCase()));
-                if (currentFilter !== 'All') filteredInventory = filteredInventory.filter(x => x.category === currentFilter);
+                // FIX [02.04.2026]: Умный и регистронезависимый поиск по name и supplierName
+                let filteredInventory = inventory;
+                
+                if (searchQuery) {
+                    const q = searchQuery.toLowerCase();
+                    filteredInventory = inventory.filter(x => 
+                        (x.name || '').toLowerCase().includes(q) || 
+                        (x.supplierName || '').toLowerCase().includes(q)
+                    );
+                }
+                
+                if (currentFilter !== 'All') {
+                    filteredInventory = filteredInventory.filter(x => x.category === currentFilter);
+                }
 
                 const listHtml = filteredInventory.map(item => {
                     const sellP = parseFloat(item.sellingPrice || item.price || 0);
@@ -222,7 +248,31 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>`;
                 
                 const searchInput = document.getElementById('search-input');
-                if (searchInput) searchInput.addEventListener('input', (e) => { searchQuery = e.target.value; window.render('inventory'); });
+                if (searchInput) {
+                    // Восстанавливаем фокус и курсор после рендера, чтобы не прерывать печать
+                    if (searchQuery.length > 0) {
+                        searchInput.focus();
+                        const valLen = searchInput.value.length;
+                        searchInput.setSelectionRange(valLen, valLen);
+                    }
+
+                    // FIX [02.04.2026]: Механизм Debounce (300мс) и мгновенный сброс
+                    searchInput.addEventListener('input', (e) => {
+                        const val = e.target.value;
+                        
+                        if (!val) { // Если инпут очищен - мгновенный сброс
+                            searchQuery = "";
+                            window.render('inventory');
+                            return;
+                        }
+
+                        if (window.searchTimeout) clearTimeout(window.searchTimeout);
+                        window.searchTimeout = setTimeout(() => {
+                            searchQuery = val;
+                            window.render('inventory');
+                        }, 300);
+                    });
+                }
             }
 
             else if (page === 'bookings') {
@@ -262,7 +312,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // === ИДЕАЛЬНАЯ МОДАЛКА (Scroll + Sticky + Math Engine) ===
     window.showForm = function(data = {}) {
         const existingModal = document.getElementById('tour-modal');
         if (existingModal) existingModal.remove();
@@ -361,7 +410,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         setTimeout(() => document.getElementById('tour-modal').classList.add('active'), 10);
     }
 
-    // === СОХРАНЕНИЕ ДАННЫХ (STORAGE + RTDB + ERROR HANDLING) ===
     window.handleFinalSave = async function(e, editIdLocal) {
         e.preventDefault(); 
         
@@ -415,7 +463,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 currency: 'AZN'
             };
             
-            // Запись в базу (RTDB)
             if (editIdLocal) {
                 await update(ref(db, `inventory/${editIdLocal}`), tData);
             } else {

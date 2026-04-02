@@ -29,12 +29,12 @@
         <div class="header-right">
             <div id="dynamic-header-actions" class="dynamic-actions-container"></div>
             
-            <div class="lang-dropdown">
-                <i class="fas fa-globe dropbtn"></i>
-                <div class="dropdown-content">
-                    <span onclick="window.setLanguage('en'); this.parentElement.style.display='none'; setTimeout(()=>this.parentElement.style.display='', 100);">EN</span>
-                    <span onclick="window.setLanguage('az'); this.parentElement.style.display='none'; setTimeout(()=>this.parentElement.style.display='', 100);">AZ</span>
-                    <span onclick="window.setLanguage('ru'); this.parentElement.style.display='none'; setTimeout(()=>this.parentElement.style.display='', 100);">RU</span>
+            <div class="lang-dropdown" id="langDropdown">
+                <i class="fas fa-globe dropbtn" id="langBtn"></i>
+                <div class="dropdown-content" id="langMenu">
+                    <span data-lang="en">EN</span>
+                    <span data-lang="az">AZ</span>
+                    <span data-lang="ru">RU</span>
                 </div>
             </div>
         </div>
@@ -53,6 +53,40 @@
         <button onclick="window.logout()" id="nav-logout" class="logout-nav-btn" style="display: none;"><i class="fas fa-sign-out-alt"></i><span data-i18n="logout">Logout</span></button>
     </nav>
 
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const langBtn = document.getElementById('langBtn');
+            const langMenu = document.getElementById('langMenu');
+            const langItems = langMenu.querySelectorAll('span');
+
+            // 1. Открытие/закрытие меню по клику на глобус
+            langBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                langMenu.classList.toggle('show-menu');
+            });
+
+            // 2. Скрытие меню при клике в любое другое место
+            document.addEventListener('click', () => {
+                if (langMenu.classList.contains('show-menu')) {
+                    langMenu.classList.remove('show-menu');
+                }
+            });
+
+            // 3. Обработка клика по конкретному языку (Event Listeners)
+            langItems.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const selectedLang = e.target.getAttribute('data-lang');
+                    
+                    if (window.setLanguage) {
+                        window.setLanguage(selectedLang); // Вызов функции i18n
+                    }
+                    langMenu.classList.remove('show-menu'); // Сразу закрываем меню
+                });
+            });
+        });
+    </script>
+
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
       import { getDatabase, ref, push, set, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
@@ -64,7 +98,7 @@
         authDomain: "caspianapp-c5d1c.firebaseapp.com",
         projectId: "caspianapp-c5d1c",
         databaseURL: "https://caspianapp-c5d1c-default-rtdb.firebaseio.com/",
-        storageBucket: "caspianapp-c5d1c.firebasestorage.app", 
+        storageBucket: "caspianapp-c5d1c.firebasestorage.app", // <--- КРИТИЧЕСКИЙ ФИКС ЗДЕСЬ
         appId: "1:17997434765:web:fe856309a8c687d8aef7c4"
       };
 

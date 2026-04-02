@@ -13,7 +13,7 @@ body { font-family: 'Inter', sans-serif; background-color: var(--bg); margin: 0;
 h1, h2, h3, h4, .logo-text { font-family: 'Montserrat', sans-serif; font-weight: 700; }
 .logo-text:hover { opacity: 0.8; }
 
-/* FIX [02.04.2026]: Глобальный фиксированный Header с высшим приоритетом */
+/* FIX [02.04.2026]: Глобальный фиксированный Header */
 .app-header { 
     background: var(--grad); color: white; padding: 10px 20px; 
     position: fixed; top: 0; left: 0; z-index: 2500; box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
@@ -23,17 +23,18 @@ h1, h2, h3, h4, .logo-text { font-family: 'Montserrat', sans-serif; font-weight:
 .header-left { padding-left: 10px; display: flex; align-items: center; }
 .header-right { display: flex; align-items: center; gap: 15px; position: relative; }
 
-/* FIX [02.04.2026]: Настройки Dropdown (pointer-events и z-index) */
+/* FIX [02.04.2026]: Настройки Dropdown, управляемого через JS */
 .lang-dropdown { position: relative; display: flex; align-items: center; cursor: pointer; height: 100%; }
-.lang-dropdown .dropbtn { font-size: 1.4rem; color: white; transition: 0.3s ease; pointer-events: none; }
+.lang-dropdown .dropbtn { font-size: 1.4rem; color: white; transition: 0.3s ease; pointer-events: auto; } /* Добавлен pointer-events: auto для кликабельности глобуса */
 .lang-dropdown:hover .dropbtn { color: #00ffcc; transform: scale(1.1); }
 
 .dropdown-content {
     display: none; position: absolute; right: 0; top: 40px; background-color: #ffffff; 
     min-width: 80px; box-shadow: 0px 10px 30px rgba(0,0,0,0.3); z-index: 9999; 
     border-radius: 12px; overflow: hidden; border: 1px solid #f0f2f5;
-    pointer-events: auto; /* Жестко разрешаем клики */
 }
+.dropdown-content.show-menu { display: block; } /* Управляется скриптом JS */
+
 .dropdown-content span {
     color: #333; padding: 14px 16px; text-decoration: none; display: block; 
     font-family: 'Montserrat', sans-serif; font-size: 0.85rem; font-weight: 700; 
@@ -43,17 +44,28 @@ h1, h2, h3, h4, .logo-text { font-family: 'Montserrat', sans-serif; font-weight:
 .dropdown-content span:hover, .dropdown-content span:active { 
     background-color: #f8f9fa; color: var(--primary); 
 }
-.lang-dropdown:hover .dropdown-content { display: block; }
 
 .content-area { padding-top: 80px; min-height: 100vh; box-sizing: border-box; }
 
+/* Планшеты */
 @media (max-width: 768px) {
     .app-header { padding: 10px 15px; }
-    .logo-text { font-size: 1.2rem; max-width: 130px; display: inline-block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    /* Возвращаем логотипу полную видимость */
+    .logo-text { font-size: 1.15rem; display: inline-block; white-space: nowrap; }
+    .header-right { gap: 15px; }
+}
+
+/* Мобильные экраны (< 600px) */
+@media (max-width: 600px) {
+    .logo-text { font-size: 1.05rem; } /* Уменьшаем шрифт, чтобы поместилось */
     .header-right { gap: 10px; }
     
+    /* FIX [02.04.2026]: Кнопка Add Service превращается в круглый плюс */
     #dynamic-header-actions span { display: none !important; }
-    #dynamic-header-actions button { padding: 10px 14px !important; border-radius: 50% !important; margin: 0 !important; width: 40px; height: 40px; }
+    #dynamic-header-actions button { 
+        padding: 0 !important; border-radius: 50% !important; margin: 0 !important; 
+        width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; 
+    }
     #dynamic-header-actions button i { margin: 0 !important; font-size: 1.1rem; }
 }
 
@@ -103,6 +115,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--p
 .bottom-nav i { font-size: 1.3rem; margin-bottom: 4px; transition: transform 0.3s ease; }
 .bottom-nav button.active i { transform: translateY(-2px); }
 
+/* Настройки для Desktop (ПК) */
 @media (min-width: 768px) {
     .content-area { margin-left: 260px; display: flex; justify-content: center; padding: 100px 30px 30px 30px; }
     .content { width: 100%; max-width: 1200px; padding-bottom: 40px; }

@@ -21,7 +21,7 @@
   "service_name": "Название Услуги",
   "supplier_name": "Имя Поставщика",
   "service_type": "Тип Услуги",
-  "verified_status": "Статус Проверенного Партнера",
+  "verified_status": "Верифицированный Партнер",
   "pricing_engine": "Механизм Ценообразования",
   "rack_rate": "Открытая Цена",
   "selling_price": "Цена Продажи",
@@ -43,7 +43,7 @@
   "net_price": "Чистая Стоимость (Net)",
   "confirm_booking": "Подтвердить Заказ",
   "empty_cart": "Пакет пуст!",
-  "booking_success": "Заказ успешно создан!",
+  "booking_success": "Действие успешно выполнено!",
   "anti_dumping_error": "Ошибка: Во избежание демпинга минимальная цена для гидов составляет 50 AZN.",
   "region": "Регион",
   "stars": "Звездность",
@@ -55,5 +55,14 @@
   "other": "Другой",
   "unrated": "Без звезд",
   "all_regions": "Все Регионы",
-  "all_stars": "Все Звезды"
+  "all_stars": "Все Звезды",
+  "profile_settings": "Настройки Профиля",
+  "company_details": "Юридические Реквизиты",
+  "media_content": "Медиа и Контент",
+  "legal_address": "Юридический Адрес",
+  "tax_id": "VÖEN (ИНН)",
+  "bank_details": "Банковские Реквизиты (IBAN)",
+  "upload_photos": "Загрузить фото (Max: 5)",
+  "hotel_description": "Описание Отеля",
+  "save_details": "Сохранить Реквизиты"
 }

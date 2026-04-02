@@ -21,7 +21,7 @@
   "service_name": "Service Name",
   "supplier_name": "Supplier Name",
   "service_type": "Service Type",
-  "verified_status": "Verified Partner Status",
+  "verified_status": "Verified Partner",
   "pricing_engine": "Pricing Engine",
   "rack_rate": "Rack Rate",
   "selling_price": "Selling Price",
@@ -43,7 +43,7 @@
   "net_price": "Net Cost",
   "confirm_booking": "Confirm Booking",
   "empty_cart": "Package is empty!",
-  "booking_success": "Booking created successfully!",
+  "booking_success": "Action completed successfully!",
   "anti_dumping_error": "Error: To prevent dumping, the minimum price for guides is 50 AZN.",
   "region": "Region",
   "stars": "Stars",
@@ -55,5 +55,14 @@
   "other": "Other",
   "unrated": "Unrated",
   "all_regions": "All Regions",
-  "all_stars": "All Stars"
+  "all_stars": "All Stars",
+  "profile_settings": "Profile Settings",
+  "company_details": "Company Details",
+  "media_content": "Media & Content",
+  "legal_address": "Legal Address",
+  "tax_id": "VÖEN (Tax ID)",
+  "bank_details": "Bank Details (IBAN)",
+  "upload_photos": "Upload Photos (Max: 5)",
+  "hotel_description": "Hotel Description",
+  "save_details": "Save Details"
 }

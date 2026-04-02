@@ -31,6 +31,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.bookingFilter = 'All';
     window.regionFilter = 'All';
     window.starsFilter = 'All';
+    
+    window.currentUserUid = null;
+    window.currentUserRole = null;
+    window.currentUserProfile = null;
 
     try { await loadLanguage(getCurrentLang()); } 
     catch (e) { console.error("i18n init error:", e); }
@@ -42,10 +46,37 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (e) { console.error("Language switch error:", e); }
     };
     
+    window.updateNavigationByRole = (role) => {
+        const navHome = document.getElementById('nav-home');
+        const navInv = document.getElementById('nav-inventory');
+        const navBook = document.getElementById('nav-bookings');
+        const navPart = document.getElementById('nav-partners');
+        const navProf = document.getElementById('nav-profile');
+
+        if(role === 'admin') {
+            if(navHome) navHome.style.display = 'flex';
+            if(navInv) navInv.style.display = 'flex';
+            if(navBook) navBook.style.display = 'flex';
+            if(navPart) navPart.style.display = 'flex';
+            if(navProf) navProf.style.display = 'flex';
+        } else if(role === 'partner') {
+            if(navHome) navHome.style.display = 'none';
+            if(navInv) navInv.style.display = 'flex';
+            if(navBook) navBook.style.display = 'flex';
+            if(navPart) navPart.style.display = 'none';
+            if(navProf) navProf.style.display = 'flex';
+        } else if(role === 'buyer') {
+            if(navHome) navHome.style.display = 'none';
+            if(navInv) navInv.style.display = 'none';
+            if(navBook) navBook.style.display = 'flex';
+            if(navPart) navPart.style.display = 'none';
+            if(navProf) navProf.style.display = 'flex';
+        }
+    };
+
     window.render = (page) => { currentPage = page; renderInternal(page); };
     window.setFilter = (filter) => { currentFilter = filter; window.render('inventory'); };
     window.setBookingFilter = (filter) => { window.bookingFilter = filter; window.render('bookings'); };
-    
     window.setRegionFilter = (val) => { window.regionFilter = val; window.render(currentPage); };
     window.setStarsFilter = (val) => { window.starsFilter = val; window.render(currentPage); };
 
@@ -56,6 +87,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             catch(e) { console.error("Delete error:", e); }
         } 
     };
+    
     window.logout = async () => { 
         try { await signOut(auth); window.render('login'); } 
         catch (e) { console.error("Logout error:", e); }
@@ -66,7 +98,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const emailInput = document.getElementById('email-field');
         const passInput = document.getElementById('pass-field');
         if (!emailInput || !passInput) return; 
-        
         const email = emailInput.value.trim();
         const pass = passInput.value.trim();
         if (!email || !pass) return; 
@@ -79,21 +110,55 @@ document.addEventListener('DOMContentLoaded', async () => {
         await setPersistence(auth, browserLocalPersistence);
         onAuthStateChanged(auth, (user) => {
             window.isAuthenticated = !!user;
-            const profileBtn = document.getElementById('nav-profile');
-            const loginBtn = document.getElementById('nav-login');
-            const logoutBtn = document.getElementById('nav-logout');
-            if (profileBtn) profileBtn.style.display = window.isAuthenticated ? 'flex' : 'none';
-            if (logoutBtn) logoutBtn.style.display = window.isAuthenticated ? 'flex' : 'none';
-            if (loginBtn) loginBtn.style.display = window.isAuthenticated ? 'none' : 'flex';
+            
+            if (user) {
+                window.currentUserUid = user.uid;
+                onValue(ref(db, `users/${user.uid}`), (snapshot) => {
+                    let profile = snapshot.val();
+                    if (!profile) {
+                        profile = { role: 'admin', companyName: 'Caspian DMC Admin', is_verified: true };
+                        set(ref(db, `users/${user.uid}`), profile);
+                    }
+                    window.currentUserRole = profile.role || 'buyer';
+                    window.currentUserProfile = profile;
+                    window.updateNavigationByRole(window.currentUserRole);
+                    
+                    const loginBtn = document.getElementById('nav-login');
+                    const logoutBtn = document.getElementById('nav-logout');
+                    if (logoutBtn) logoutBtn.style.display = 'flex';
+                    if (loginBtn) loginBtn.style.display = 'none';
 
-            if (!user && ['home', 'bookings', 'partners', 'profile'].includes(currentPage)) currentPage = 'login';
-            if (user && currentPage === 'login') currentPage = 'home';
-            if (!isAuthReady) {
-                isAuthReady = true;
-                const loader = document.getElementById('auth-loader');
-                if (loader) loader.classList.add('hidden'); 
+                    if (currentPage === 'login') {
+                        if (window.currentUserRole === 'admin') currentPage = 'home';
+                        else if (window.currentUserRole === 'partner') currentPage = 'inventory';
+                        else currentPage = 'bookings';
+                    }
+                    
+                    if (!isAuthReady) {
+                        isAuthReady = true;
+                        const loader = document.getElementById('auth-loader');
+                        if (loader) loader.classList.add('hidden'); 
+                    }
+                    renderInternal(currentPage);
+                });
+            } else {
+                window.currentUserUid = null;
+                window.currentUserRole = null;
+                window.currentUserProfile = null;
+                
+                const loginBtn = document.getElementById('nav-login');
+                const logoutBtn = document.getElementById('nav-logout');
+                if (logoutBtn) logoutBtn.style.display = 'none';
+                if (loginBtn) loginBtn.style.display = 'flex';
+                
+                if (!isAuthReady) {
+                    isAuthReady = true;
+                    const loader = document.getElementById('auth-loader');
+                    if (loader) loader.classList.add('hidden'); 
+                }
+                currentPage = 'login';
+                renderInternal(currentPage);
             }
-            renderInternal(currentPage);
         });
     } catch (e) { console.error("Auth error:", e); }
 
@@ -121,7 +186,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!content) return;
 
         try {
-            if (!window.isAuthenticated && ['home', 'bookings', 'partners', 'profile'].includes(page)) {
+            if (!window.isAuthenticated && ['home', 'bookings', 'partners', 'profile', 'inventory'].includes(page)) {
                 page = 'login'; currentPage = 'login';
             }
 
@@ -132,16 +197,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const dynamicHeader = document.getElementById('dynamic-header-actions');
             if (dynamicHeader) {
-                if (page === 'inventory' && window.isAuthenticated) {
+                if (page === 'inventory' && window.isAuthenticated && (window.currentUserRole === 'admin' || window.currentUserRole === 'partner')) {
                     dynamicHeader.innerHTML = `<button class="btn-primary" onclick="window.showForm();" style="padding: 6px 14px; border-radius:8px; font-size: 0.85rem;"><i class="fas fa-plus"></i> <span data-i18n="add_service">Add Service</span></button>`;
-                } else if (page === 'partners' && window.isAuthenticated) {
+                } else if (page === 'partners' && window.currentUserRole === 'admin') {
                     dynamicHeader.innerHTML = `<button class="btn-primary" onclick="window.showPartnerForm();" style="padding: 6px 14px; border-radius:8px; font-size: 0.85rem;"><i class="fas fa-plus"></i> <span data-i18n="add_partner">Add Partner</span></button>`;
                 } else {
                     dynamicHeader.innerHTML = '';
                 }
             }
 
-            if (page === 'home') {
+            if (page === 'home' && window.currentUserRole === 'admin') {
                 setTimeout(() => calculateDashboardStats(), 50);
                 content.innerHTML = `
                     <div style="padding:15px 15px 100px 15px;">
@@ -182,19 +247,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             else if (page === 'inventory') {
                 let filteredInventory = inventory;
+                
+                if (window.currentUserRole === 'partner') {
+                    filteredInventory = filteredInventory.filter(x => x.supplier_uid === window.currentUserUid);
+                }
+                
                 if (searchQuery) {
                     const q = searchQuery.toLowerCase();
-                    filteredInventory = inventory.filter(x => (x.name || '').toLowerCase().includes(q) || (x.supplierName || '').toLowerCase().includes(q));
+                    filteredInventory = filteredInventory.filter(x => (x.name || '').toLowerCase().includes(q) || (x.supplierName || '').toLowerCase().includes(q));
                 }
-                if (currentFilter !== 'All') {
-                    filteredInventory = filteredInventory.filter(x => x.category === currentFilter);
-                }
-                if (window.regionFilter !== 'All') {
-                    filteredInventory = filteredInventory.filter(x => x.region === window.regionFilter);
-                }
-                if (window.starsFilter !== 'All') {
-                    filteredInventory = filteredInventory.filter(x => x.stars === window.starsFilter);
-                }
+                if (currentFilter !== 'All') filteredInventory = filteredInventory.filter(x => x.category === currentFilter);
+                if (window.regionFilter !== 'All') filteredInventory = filteredInventory.filter(x => x.region === window.regionFilter);
+                if (window.starsFilter !== 'All') filteredInventory = filteredInventory.filter(x => x.stars === window.starsFilter);
 
                 const listHtml = filteredInventory.map(item => {
                     const sellP = parseFloat(item.sellingPrice || item.price || 0);
@@ -206,14 +270,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                     let hotelMeta = '';
                     if (item.category === 'Hotel' && item.region) {
                         const starString = item.stars === 'Unrated' ? t('unrated') : '⭐'.repeat(parseInt(item.stars) || 0);
-                        hotelMeta = `<div style="font-size:0.85rem; color:#f39c12; margin-top:4px; font-weight:600;">${starString} <span style="color:#888; font-weight:400;">| ${t(item.region.toLowerCase())}</span></div>`;
+                        hotelMeta = `<div style="font-size:0.85rem; color:#f39c12; margin-top:4px; font-weight:600;">${starString} <span style="color:#888; font-weight:400;">| ${t(item.region?.toLowerCase()) || item.region}</span></div>`;
                     }
 
                     return `
                     <div class="tour-card fade-in">
                         <div style="position: relative;">
                             <img src="${coverImage}" loading="lazy" class="tour-image" onerror="this.style.opacity='0'; this.style.backgroundColor='#f0f2f5';">
-                            <div style="position:absolute; top:16px; left:16px;"><span class="badge ${badgeClass}">${t(item.category.toLowerCase()) || item.category}</span></div>
+                            <div style="position:absolute; top:16px; left:16px;"><span class="badge ${badgeClass}">${t(item.category?.toLowerCase()) || item.category}</span></div>
                             <div style="position:absolute; bottom:-16px; right:16px; background:var(--dark); color:white; padding:8px 20px; border-radius:25px; box-shadow:0 4px 15px rgba(0,0,0,0.15); z-index: 2;">
                                 <span class="price-tag" style="color:white; font-size:1.2rem;">${item.currency==='AZN'?'₼':'$'}${sellP}</span>
                             </div>
@@ -223,16 +287,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <h3 style="margin:4px 0 0 0;">${item.name}</h3>
                             ${hotelMeta}
                             <div style="margin-top:10px;"></div>
-                            ${window.isAuthenticated ? `
                             <div style="background:#f8f9fa; padding:10px 12px; border-radius:8px; margin-top:auto; font-size:0.85rem; display:flex; justify-content:space-between; border: 1px solid #e1e4e8;">
                                 <span style="color:#555;">${t('net_label')}: <b style="color:#e74c3c;">${item.netCost || 0}</b></span>
                                 <span style="font-weight:700; color:#27ae60;">${t('margin_label')}: ${item.markup || 0}%</span>
-                            </div>` : ''}
+                            </div>
                             <div style="display:flex; gap:10px; margin-top:15px;">
-                                ${window.isAuthenticated ? `
-                                    <button onclick="window.editItem('${item.id}')" class="btn-action btn-edit" style="flex:1;"><i class="fas fa-pen"></i></button>
-                                    <button onclick="window.deleteItem('${item.id}')" class="btn-action btn-delete" style="flex:1;"><i class="fas fa-trash"></i></button>
-                                ` : `<button class="btn-primary" style="flex:1;">BOOK NOW</button>`}
+                                <button onclick="window.editItem('${item.id}')" class="btn-action btn-edit" style="flex:1;"><i class="fas fa-pen"></i></button>
+                                <button onclick="window.deleteItem('${item.id}')" class="btn-action btn-delete" style="flex:1;"><i class="fas fa-trash"></i></button>
                             </div>
                         </div>
                     </div>`
@@ -254,26 +315,34 @@ document.addEventListener('DOMContentLoaded', async () => {
                             </div>
                             <div style="flex: 1 1 calc(50% - 5px);">
                                 <select id="filter-region" style="margin-top:0;" onchange="window.setRegionFilter(this.value)">
-                                    <option value="All" ${window.regionFilter === 'All' ? 'selected' : ''}>${t('all_regions')}</option>
-                                    <option value="Baku" ${window.regionFilter === 'Baku' ? 'selected' : ''}>${t('baku')}</option>
-                                    <option value="Gabala" ${window.regionFilter === 'Gabala' ? 'selected' : ''}>${t('gabala')}</option>
-                                    <option value="Qusar" ${window.regionFilter === 'Qusar' ? 'selected' : ''}>${t('qusar')}</option>
-                                    <option value="Sheki" ${window.regionFilter === 'Sheki' ? 'selected' : ''}>${t('sheki')}</option>
-                                    <option value="Lankaran" ${window.regionFilter === 'Lankaran' ? 'selected' : ''}>${t('lankaran')}</option>
-                                    <option value="Other" ${window.regionFilter === 'Other' ? 'selected' : ''}>${t('other')}</option>
+                                    <option value="All" ${window.regionFilter === 'All' ? 'selected' : ''}>${t('all_regions') || 'All Regions'}</option>
+                                    <option value="Baku" ${window.regionFilter === 'Baku' ? 'selected' : ''}>${t('baku') || 'Baku'}</option>
+                                    <option value="Gabala" ${window.regionFilter === 'Gabala' ? 'selected' : ''}>${t('gabala') || 'Gabala'}</option>
+                                    <option value="Qusar" ${window.regionFilter === 'Qusar' ? 'selected' : ''}>${t('qusar') || 'Qusar'}</option>
+                                    <option value="Sheki" ${window.regionFilter === 'Sheki' ? 'selected' : ''}>${t('sheki') || 'Sheki'}</option>
+                                    <option value="Lankaran" ${window.regionFilter === 'Lankaran' ? 'selected' : ''}>${t('lankaran') || 'Lankaran'}</option>
+                                    <option value="Other" ${window.regionFilter === 'Other' ? 'selected' : ''}>${t('other') || 'Other'}</option>
                                 </select>
                             </div>
                             <div style="flex: 1 1 calc(50% - 5px);">
                                 <select id="filter-stars" style="margin-top:0;" onchange="window.setStarsFilter(this.value)">
-                                    <option value="All" ${window.starsFilter === 'All' ? 'selected' : ''}>${t('all_stars')}</option>
+                                    <option value="All" ${window.starsFilter === 'All' ? 'selected' : ''}>${t('all_stars') || 'All Stars'}</option>
                                     <option value="3" ${window.starsFilter === '3' ? 'selected' : ''}>3 ⭐</option>
                                     <option value="4" ${window.starsFilter === '4' ? 'selected' : ''}>4 ⭐</option>
                                     <option value="5" ${window.starsFilter === '5' ? 'selected' : ''}>5 ⭐</option>
-                                    <option value="Unrated" ${window.starsFilter === 'Unrated' ? 'selected' : ''}>${t('unrated')}</option>
+                                    <option value="Unrated" ${window.starsFilter === 'Unrated' ? 'selected' : ''}>${t('unrated') || 'Unrated'}</option>
                                 </select>
                             </div>
                         </div>
+
                         <div id="tours-list">${listHtml || '<p style="text-align:center; color:#888; margin-top:30px;">No items match your criteria</p>'}</div>
+                        
+                        ${window.currentUserRole === 'admin' ? `
+                        <div style="margin-top: 40px; text-align: center; border-top: 1px dashed #ccc; padding-top: 20px;">
+                            <button id="seed-btn" class="btn-primary" style="margin: 0 auto; background: #34495e; padding: 15px 30px;" onclick="window.seedDatabase()">
+                                <i class="fas fa-database"></i> Авто-заполнение базы отелей (Габала, Гусар, Шеки, Лянкяран)
+                            </button>
+                        </div>` : ''}
                     </div>`;
                 
                 const searchInput = document.getElementById('search-input');
@@ -294,22 +363,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             else if (page === 'bookings') {
                 let filteredForBooking = inventory;
                 
-                if (window.bookingFilter !== 'All') {
-                    filteredForBooking = inventory.filter(x => x.category === window.bookingFilter);
-                }
-                if (window.regionFilter !== 'All') {
-                    filteredForBooking = filteredForBooking.filter(x => x.region === window.regionFilter);
-                }
-                if (window.starsFilter !== 'All') {
-                    filteredForBooking = filteredForBooking.filter(x => x.stars === window.starsFilter);
-                }
+                if (window.bookingFilter !== 'All') filteredForBooking = inventory.filter(x => x.category === window.bookingFilter);
+                if (window.regionFilter !== 'All') filteredForBooking = filteredForBooking.filter(x => x.region === window.regionFilter);
+                if (window.starsFilter !== 'All') filteredForBooking = filteredForBooking.filter(x => x.stars === window.starsFilter);
 
                 const leftHtml = filteredForBooking.map(item => {
                     const sellP = parseFloat(item.sellingPrice || item.price || 0);
                     let hotelMeta = '';
                     if (item.category === 'Hotel' && item.region) {
                         const starString = item.stars === 'Unrated' ? t('unrated') : '⭐'.repeat(parseInt(item.stars) || 0);
-                        hotelMeta = `<div style="font-size:0.75rem; color:#f39c12;">${starString} | ${t(item.region.toLowerCase())}</div>`;
+                        hotelMeta = `<div style="font-size:0.75rem; color:#f39c12;">${starString} | ${t(item.region?.toLowerCase()) || item.region}</div>`;
                     }
 
                     return `
@@ -320,7 +383,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                             ${hotelMeta}
                             <div style="color:var(--dark); font-weight:800; margin-top:4px;">${item.currency==='AZN'?'₼':'$'}${sellP}</div>
                         </div>
-                        <button onclick="window.addToCart('${item.id}')" class="btn-primary" style="padding:10px 15px; border-radius:8px; font-size:0.85rem;"><i class="fas fa-plus"></i></button>
+                        ${window.currentUserRole === 'buyer' || window.currentUserRole === 'admin' ? `
+                            <button onclick="window.addToCart('${item.id}')" class="btn-primary" style="padding:10px 15px; border-radius:8px; font-size:0.85rem;"><i class="fas fa-plus"></i></button>
+                        ` : ''}
                     </div>`;
                 }).join('');
 
@@ -348,33 +413,36 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 <button class="filter-btn ${window.bookingFilter === 'Transport' ? 'active' : ''}" onclick="window.setBookingFilter('Transport')">${t('transport')}</button>
                                 <button class="filter-btn ${window.bookingFilter === 'Activity' ? 'active' : ''}" onclick="window.setBookingFilter('Activity')">${t('activity')}</button>
                             </div>
+                            
                             <div style="display:flex; gap:10px; margin-bottom: 20px;">
                                 <div style="flex: 1;">
                                     <select id="filter-region" style="margin-top:0;" onchange="window.setRegionFilter(this.value)">
-                                        <option value="All" ${window.regionFilter === 'All' ? 'selected' : ''}>${t('all_regions')}</option>
-                                        <option value="Baku" ${window.regionFilter === 'Baku' ? 'selected' : ''}>${t('baku')}</option>
-                                        <option value="Gabala" ${window.regionFilter === 'Gabala' ? 'selected' : ''}>${t('gabala')}</option>
-                                        <option value="Qusar" ${window.regionFilter === 'Qusar' ? 'selected' : ''}>${t('qusar')}</option>
-                                        <option value="Sheki" ${window.regionFilter === 'Sheki' ? 'selected' : ''}>${t('sheki')}</option>
-                                        <option value="Lankaran" ${window.regionFilter === 'Lankaran' ? 'selected' : ''}>${t('lankaran')}</option>
-                                        <option value="Other" ${window.regionFilter === 'Other' ? 'selected' : ''}>${t('other')}</option>
+                                        <option value="All" ${window.regionFilter === 'All' ? 'selected' : ''}>${t('all_regions') || 'All Regions'}</option>
+                                        <option value="Baku" ${window.regionFilter === 'Baku' ? 'selected' : ''}>${t('baku') || 'Baku'}</option>
+                                        <option value="Gabala" ${window.regionFilter === 'Gabala' ? 'selected' : ''}>${t('gabala') || 'Gabala'}</option>
+                                        <option value="Qusar" ${window.regionFilter === 'Qusar' ? 'selected' : ''}>${t('qusar') || 'Qusar'}</option>
+                                        <option value="Sheki" ${window.regionFilter === 'Sheki' ? 'selected' : ''}>${t('sheki') || 'Sheki'}</option>
+                                        <option value="Lankaran" ${window.regionFilter === 'Lankaran' ? 'selected' : ''}>${t('lankaran') || 'Lankaran'}</option>
+                                        <option value="Other" ${window.regionFilter === 'Other' ? 'selected' : ''}>${t('other') || 'Other'}</option>
                                     </select>
                                 </div>
                                 <div style="flex: 1;">
                                     <select id="filter-stars" style="margin-top:0;" onchange="window.setStarsFilter(this.value)">
-                                        <option value="All" ${window.starsFilter === 'All' ? 'selected' : ''}>${t('all_stars')}</option>
+                                        <option value="All" ${window.starsFilter === 'All' ? 'selected' : ''}>${t('all_stars') || 'All Stars'}</option>
                                         <option value="3" ${window.starsFilter === '3' ? 'selected' : ''}>3 ⭐</option>
                                         <option value="4" ${window.starsFilter === '4' ? 'selected' : ''}>4 ⭐</option>
                                         <option value="5" ${window.starsFilter === '5' ? 'selected' : ''}>5 ⭐</option>
-                                        <option value="Unrated" ${window.starsFilter === 'Unrated' ? 'selected' : ''}>${t('unrated')}</option>
+                                        <option value="Unrated" ${window.starsFilter === 'Unrated' ? 'selected' : ''}>${t('unrated') || 'Unrated'}</option>
                                     </select>
                                 </div>
                             </div>
+
                             <div style="display:flex; flex-direction:column; gap:10px;">
                                 ${leftHtml || '<p style="color:#888; text-align:center; padding:20px;">No items match your criteria.</p>'}
                             </div>
                         </div>
 
+                        ${window.currentUserRole === 'buyer' || window.currentUserRole === 'admin' ? `
                         <div style="flex: 1 1 35%; min-width:300px;">
                             <div class="card" style="position:sticky; top:90px;">
                                 <h3 style="border-bottom:2px solid #f0f2f5; padding-bottom:10px; margin-top:0;" data-i18n="current_package">Current Package</h3>
@@ -386,7 +454,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                         <span style="color:#555;" data-i18n="total_price">Total Price</span>
                                         <span style="font-weight:800; color:var(--dark); font-size:1.1rem;">₼ ${totalSelling.toFixed(2)}</span>
                                     </div>
-                                    ${window.isAuthenticated ? `
+                                    ${window.currentUserRole === 'admin' ? `
                                     <div style="display:flex; justify-content:space-between; border-top:1px dashed #ccc; padding-top:5px; margin-top:5px;">
                                         <span style="color:#888; font-size:0.85rem;" data-i18n="net_price">Net Cost</span>
                                         <span style="color:#e74c3c; font-weight:700; font-size:0.85rem;">₼ ${totalNet.toFixed(2)}</span>
@@ -396,11 +464,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                                     <i class="fas fa-check-circle" style="margin-right:8px;"></i> <span data-i18n="confirm_booking">Confirm Booking</span>
                                 </button>
                             </div>
-                        </div>
+                        </div>` : ''}
                     </div>`;
             }
 
-            else if (page === 'partners') {
+            else if (page === 'partners' && window.currentUserRole === 'admin') {
                 const partnersHtml = partners.map(p => {
                     let badgeClass = p.type === 'Hotel' ? 'badge-hotel' : 'badge-transport';
                     let verifiedBadge = p.is_verified ? `<span class="verified-icon" title="Verified" style="color:#27ae60;"><i class="fas fa-check-circle"></i></span>` : '';
@@ -415,10 +483,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                             </div>
                             ${p.documentUrl ? `<a href="${p.documentUrl}" target="_blank" style="color:var(--dark); font-size:1.8rem; transition:0.2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--dark)'"><i class="fas fa-file-pdf"></i></a>` : ''}
                         </div>
-                        ${window.isAuthenticated ? `
                         <div style="display:flex; gap:10px; margin-top:20px; border-top: 1px solid #f0f2f5; padding-top: 15px;">
                             <button onclick="window.deletePartner('${p.id}')" class="btn-action btn-delete" style="flex:1;"><i class="fas fa-trash"></i> Удалить</button>
-                        </div>` : ''}
+                        </div>
                     </div>`
                 }).join('');
 
@@ -429,14 +496,77 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>`;
             }
             
+            // FIX [02.04.2026]: Переверстанный Экстранет-Профиль (Extranet Style UI)
             else if (page === 'profile') {
+                const profile = window.currentUserProfile || {};
+                
+                let verifiedHtml = '';
+                if (profile.is_verified) {
+                    verifiedHtml = `<span style="color:#27ae60; font-size:0.9rem; margin-left:10px; display:inline-flex; align-items:center; gap:5px;"><i class="fas fa-check-circle"></i> <strong data-i18n="verified_status">Təsdiqlənmiş Tərəfdaş</strong></span>`;
+                }
+
                 content.innerHTML = `
-                    <div style="padding:40px 20px; text-align:center;">
-                        <div class="card" style="padding:50px 20px; border-radius:24px; margin: 0 auto; max-width: 400px;">
-                            <h2 style="margin:0 0 10px 0; color:#1a1a1a; font-family:'Montserrat', sans-serif;" data-i18n="nav_profile">Profile</h2>
-                            <button class="btn-action btn-delete" onclick="window.logout()" style="width:100%; padding:16px; font-weight:700; background:#fff0f0;" data-i18n="logout">Logout</button>
+                    <div style="padding:30px 20px; max-width: 1000px; margin: 0 auto; padding-bottom: 100px;">
+                        
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 25px;">
+                            <h2 style="margin:0; color:#1a1a1a; font-family:'Montserrat', sans-serif;" data-i18n="profile_settings">Profile Settings</h2>
+                            <button class="btn-action btn-delete" onclick="window.logout()" style="padding:10px 20px; font-weight:700; background:#fff0f0;" data-i18n="logout">Logout</button>
+                        </div>
+                        
+                        <div style="display: flex; flex-wrap: wrap; gap: 25px;">
+                            <div class="card" style="flex: 1 1 350px; padding: 30px; border-radius: 20px; margin:0;">
+                                <h3 style="margin-top:0; border-bottom: 2px solid #f0f2f5; padding-bottom: 10px;" data-i18n="company_details">Company Details</h3>
+                                
+                                <label class="input-label" style="display:flex; align-items:center;" data-i18n="company_name">Company Name ${verifiedHtml}</label>
+                                <input type="text" value="${profile.companyName || profile.role?.toUpperCase() || ''}" disabled style="background:#f0f2f5; color:#777; font-weight:600; cursor:not-allowed;">
+                                
+                                <label class="input-label" data-i18n="legal_address">Legal Address</label>
+                                <input type="text" id="prof-address" value="${profile.legalAddress || ''}" placeholder="Baku, Nizami str. 10">
+
+                                <label class="input-label" data-i18n="tax_id">VÖEN (Tax ID)</label>
+                                <input type="text" id="prof-voen" value="${profile.voen || ''}" placeholder="1234567891">
+
+                                <label class="input-label" data-i18n="bank_details">Bank Details (IBAN)</label>
+                                <input type="text" id="prof-iban" value="${profile.iban || ''}" placeholder="AZ12 NABZ 0000 0000 ...">
+
+                                <button class="save-btn" onclick="window.saveProfile()" style="margin-top: 25px;">
+                                    <i class="fas fa-save"></i> <span data-i18n="save_details">Save Details</span>
+                                </button>
+                            </div>
+
+                            <div class="card" style="flex: 1 1 350px; padding: 30px; border-radius: 20px; margin:0;">
+                                <h3 style="margin-top:0; border-bottom: 2px solid #f0f2f5; padding-bottom: 10px;" data-i18n="media_content">Media & Content</h3>
+                                
+                                <label class="input-label" data-i18n="hotel_description">Hotel Description</label>
+                                <textarea id="prof-desc" style="height: 120px;" placeholder="..."> ${profile.description || ''}</textarea>
+
+                                <label class="input-label" style="margin-top: 20px;" data-i18n="upload_photos">Upload Photos (Max: 5)</label>
+                                <div style="border: 2px dashed #00afb9; border-radius: 12px; padding: 30px; text-align: center; background: rgba(0, 175, 185, 0.05); position: relative; cursor: pointer; transition: 0.2s;" onmouseover="this.style.background='rgba(0, 175, 185, 0.1)'" onmouseout="this.style.background='rgba(0, 175, 185, 0.05)'">
+                                    <i class="fas fa-camera" style="font-size: 2.5rem; color: #00afb9; margin-bottom: 10px;"></i>
+                                    <p style="margin: 0; font-size: 0.9rem; color: #555; font-weight: 600;" data-i18n="upload_photos">Drag & Drop or Click to upload</p>
+                                    <input type="file" id="prof-photos" multiple accept="image/*" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;">
+                                </div>
+                                <div id="prof-photos-preview" style="display:flex; gap:10px; margin-top:15px; overflow-x:auto;"></div>
+                            </div>
                         </div>
                     </div>`;
+
+                setTimeout(() => {
+                    const photoInput = document.getElementById('prof-photos');
+                    const preview = document.getElementById('prof-photos-preview');
+                    if(photoInput) {
+                        photoInput.addEventListener('change', (e) => {
+                            const files = e.target.files;
+                            if(files.length > 5) {
+                                alert("Maximum 5 photos allowed!");
+                                photoInput.value = "";
+                                preview.innerHTML = "";
+                                return;
+                            }
+                            preview.innerHTML = `<span style="font-size:0.85rem; color:#27ae60; font-weight:600;"><i class="fas fa-check"></i> ${files.length} photo(s) selected</span>`;
+                        });
+                    }
+                }, 100);
             }
             else if (page === 'login') {
                 content.innerHTML = `
@@ -457,6 +587,42 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (e) { console.error("Critical Render Error:", e); }
     }
 
+    // Сохранение Профиля (включая новое поле description)
+    window.saveProfile = async () => {
+        const address = document.getElementById('prof-address').value.trim();
+        const voen = document.getElementById('prof-voen').value.trim();
+        const iban = document.getElementById('prof-iban').value.trim();
+        const desc = document.getElementById('prof-desc') ? document.getElementById('prof-desc').value.trim() : '';
+        
+        const saveBtn = document.querySelector('#app-content .save-btn');
+        const origHtml = saveBtn.innerHTML;
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        saveBtn.disabled = true;
+
+        try {
+            await update(ref(db, `users/${window.currentUserUid}`), {
+                legalAddress: address,
+                voen: voen,
+                iban: iban,
+                description: desc
+            });
+            
+            alert(t('booking_success') || "Məlumatlar uğurla yadda saxlanıldı!");
+            
+            if(window.currentUserProfile) {
+                window.currentUserProfile.legalAddress = address;
+                window.currentUserProfile.voen = voen;
+                window.currentUserProfile.iban = iban;
+                window.currentUserProfile.description = desc;
+            }
+        } catch(e) {
+            alert("Error: " + e.message);
+        } finally {
+            saveBtn.innerHTML = origHtml;
+            saveBtn.disabled = false;
+        }
+    };
+
     window.addToCart = (id) => {
         const item = inventory.find(i => i.id === id);
         if (item) {
@@ -469,7 +635,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.render('bookings');
     };
 
-    // FIX [02.04.2026]: Новая логика обработки заказа и создания B2B-Инвойса
     window.processBooking = async () => {
         if(window.currentCart.length === 0) return alert(t('empty_cart') || "Package is empty!");
         const btn = document.getElementById('checkout-btn');
@@ -490,13 +655,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 totalMargin: totalSelling - totalNet, 
                 status: 'pending', 
                 timestamp: Date.now(),
-                createdAt: Date.now()
+                createdAt: Date.now(),
+                buyer_uid: window.currentUserUid
             };
 
-            // Сохраняем в базу данных
             await push(ref(db, 'bookings'), orderData);
-            
-            // Вызываем рендер инвойса
             window.showInvoiceModal(orderData);
             
         } catch(e) {
@@ -506,7 +669,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-    // FIX [02.04.2026]: Генерация HTML-инвойса для клиента
     window.showInvoiceModal = function(orderData) {
         const existingModal = document.getElementById('invoice-modal');
         if (existingModal) existingModal.remove();
@@ -524,7 +686,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const modalHtml = `
         <div class="modal-overlay" id="invoice-modal" style="z-index: 5000;">
             <div class="modal-content" style="max-width: 800px; padding: 0;">
-                
                 <div id="invoice-print-area">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; border-bottom: 2px solid var(--primary); padding-bottom: 20px;">
                         <div>
@@ -537,7 +698,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <p style="margin: 5px 0 0 0; color: #666;"><strong>Date:</strong> ${dateStr}</p>
                         </div>
                     </div>
-
                     <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
                         <thead>
                             <tr style="background: #f8f9fa; text-align: left;">
@@ -550,7 +710,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                             ${itemsHtml}
                         </tbody>
                     </table>
-
                     <div style="display: flex; justify-content: flex-end;">
                         <div style="min-width: 250px; background: #f8f9fa; padding: 20px; border-radius: 12px;">
                             <div style="display: flex; justify-content: space-between; font-size: 1.2rem; font-weight: 800; color: var(--dark);">
@@ -560,7 +719,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </div>
                     </div>
                 </div>
-
                 <div class="modal-footer no-print" style="justify-content: flex-end; background: #f0f2f5; border-radius: 0 0 20px 20px;">
                     <button type="button" class="btn-action btn-edit" style="padding: 12px 20px;" onclick="window.closeInvoiceAndClear()">Close</button>
                     <button type="button" class="btn-primary" style="padding: 12px 20px;" onclick="window.print()"><i class="fas fa-print"></i> Print / Save as PDF</button>
@@ -727,7 +885,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 sellingPrice: sPrice, price: sPrice, image: finalImageUrl, included: document.getElementById('t-included').value || "",
                 is_verified: document.getElementById('t-verified').checked, currency: 'AZN',
                 region: categoryVal === 'Hotel' ? document.getElementById('t-region').value : null,
-                stars: categoryVal === 'Hotel' ? document.getElementById('t-stars').value : null
+                stars: categoryVal === 'Hotel' ? document.getElementById('t-stars').value : null,
+                supplier_uid: window.currentUserUid || 'admin'
             };
 
             if (categoryVal === 'Activity') tData.is_certified = true;
@@ -836,6 +995,54 @@ document.addEventListener('DOMContentLoaded', async () => {
             alert("Ошибка: " + err.message);
             saveBtn.disabled = false;
             saveBtn.innerHTML = originalText;
+        }
+    };
+
+    window.seedDatabase = async () => {
+        const btn = document.getElementById('seed-btn');
+        if (btn) {
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Загрузка в Firebase...';
+            btn.disabled = true;
+        }
+
+        const regionalHotelsSeed = [
+            { service_type: 'hotel', service_name: "Gabala Forest Retreat", supplier_name: "Gabala Tourism LLC", region: "Gabala", stars: 4, rack_rate: 110.00, net_rate: 77.00, is_verified: true, image_filename: "", description: "Standard Double Room with Breakfast and Mountain View" },
+            { service_type: 'hotel', service_name: "Caucasus Boutique Hotel", supplier_name: "Caucasus Hospitality", region: "Gabala", stars: 3, rack_rate: 70.00, net_rate: 49.00, is_verified: false, image_filename: "", description: "Standard Twin Room, Free WiFi" },
+            { service_type: 'hotel', service_name: "Gabala City Center Hotel", supplier_name: "City Hotels Group", region: "Gabala", stars: 4, rack_rate: 95.00, net_rate: 66.50, is_verified: true, image_filename: "", description: "Deluxe Double Room with Balcony" },
+            { service_type: 'hotel', service_name: "Qusar Alpine Inn", supplier_name: "North Travel Az", region: "Qusar", stars: 3, rack_rate: 65.00, net_rate: 45.50, is_verified: true, image_filename: "", description: "Standard Double Room with Breakfast" },
+            { service_type: 'hotel', service_name: "Laza View Resort", supplier_name: "Laza Resort Management", region: "Qusar", stars: 4, rack_rate: 120.00, net_rate: 84.00, is_verified: true, image_filename: "", description: "Superior Room with Mountain View" },
+            { service_type: 'hotel', service_name: "Shahdag Qusar Guest House", supplier_name: "Local Community Qusar", region: "Qusar", stars: 3, rack_rate: 60.00, net_rate: 42.00, is_verified: false, image_filename: "", description: "Economy Twin Room, Breakfast included" },
+            { service_type: 'hotel', service_name: "Silk Road Boutique Hotel", supplier_name: "Sheki Heritage", region: "Sheki", stars: 4, rack_rate: 100.00, net_rate: 70.00, is_verified: true, image_filename: "", description: "Traditional Standard Room with Breakfast" },
+            { service_type: 'hotel', service_name: "Nuxa Family Inn", supplier_name: "Nuxa Hospitality", region: "Sheki", stars: 3, rack_rate: 65.00, net_rate: 45.50, is_verified: false, image_filename: "", description: "Family Room (up to 3 persons)" },
+            { service_type: 'hotel', service_name: "Sheki Palace View", supplier_name: "Palace Hotels AZ", region: "Sheki", stars: 4, rack_rate: 115.00, net_rate: 80.50, is_verified: true, image_filename: "", description: "Deluxe Room with Breakfast" },
+            { service_type: 'hotel', service_name: "Lankaran Springs & Spa", supplier_name: "South Coast Resorts", region: "Lankaran", stars: 4, rack_rate: 120.00, net_rate: 84.00, is_verified: true, image_filename: "", description: "Standard Double Room, Spa Access" },
+            { service_type: 'hotel', service_name: "Caspian Breeze Lankaran", supplier_name: "Caspian Tourism", region: "Lankaran", stars: 3, rack_rate: 75.00, net_rate: 52.50, is_verified: false, image_filename: "", description: "Standard Twin Room with Sea View" },
+            { service_type: 'hotel', service_name: "Talysh Mountains Resort", supplier_name: "Talysh Eco Tours", region: "Lankaran", stars: 4, rack_rate: 105.00, net_rate: 73.50, is_verified: true, image_filename: "", description: "Superior Double Room with Breakfast" }
+        ];
+
+        try {
+            const { db, dbFunc } = window;
+            const { ref, push } = dbFunc;
+            
+            for (const item of regionalHotelsSeed) {
+                const markupCalc = ((item.rack_rate - item.net_rate) / item.net_rate) * 100;
+                const formattedHotel = {
+                    category: "Hotel", name: item.service_name, supplierName: item.supplier_name, region: item.region,
+                    stars: item.stars.toString(), rackRate: item.rack_rate, netCost: item.net_rate, markup: parseFloat(markupCalc.toFixed(2)), 
+                    sellingPrice: item.rack_rate, price: item.rack_rate, is_verified: item.is_verified, image: item.image_filename,
+                    included: item.description, currency: "AZN", is_certified: false, supplier_uid: 'admin'
+                };
+                await push(ref(db, 'inventory'), formattedHotel);
+            }
+            
+            alert("12 региональных отелей успешно загружены в Firebase! Страница будет перезагружена.");
+            if (btn) btn.remove();
+            window.location.reload(); 
+            
+        } catch (err) {
+            console.error("Seed Error:", err);
+            alert("Ошибка при заполнении: " + err.message);
+            if (btn) { btn.innerHTML = '<i class="fas fa-database"></i> Авто-заполнение базы отелей'; btn.disabled = false; }
         }
     };
 });

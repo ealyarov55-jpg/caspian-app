@@ -1,12 +1,10 @@
 import { calculateDashboardStats } from './analytics.js';
 import { loadLanguage, applyTranslations, getCurrentLang, t } from './i18n.js';
 
-// FIX [02.04.2026]: Очистка устаревшего кэша и Service Workers (Hard Reset для конфликтов)
+// FIX [02.04.2026]: Очистка устаревшего кэша
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then(function(registrations) {
-        for(let registration of registrations) {
-            registration.unregister(); 
-        }
+        for(let registration of registrations) { registration.unregister(); }
     }).catch(err => console.warn("SW cleanup:", err));
 }
 if (window.caches) {
@@ -24,6 +22,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let inventory = []; 
     let bookings = []; 
+    let partners = []; // FIX [02.04.2026]: Массив для хранения партнеров
     let searchQuery = ""; 
     let currentFilter = "All"; 
     let currentPage = 'home'; 
@@ -106,6 +105,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             bookings = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
             if (isAuthReady && ['bookings', 'home'].includes(currentPage)) renderInternal(currentPage);
         });
+
+        // FIX [02.04.2026]: Слушатель базы данных для Партнеров
+        onValue(ref(db, 'partners'), (snapshot) => {
+            const data = snapshot.val();
+            partners = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
+            if (isAuthReady && currentPage === 'partners') renderInternal(currentPage);
+        });
     } catch (e) { console.error("Firebase error:", e); }
 
     function renderInternal(page) {
@@ -123,10 +129,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             const activeBtn = document.getElementById(`nav-${page}`);
             if (activeBtn) activeBtn.classList.add('active');
 
+            // FIX [02.04.2026]: Динамическая шапка для Партнеров и Инвентаря
             const dynamicHeader = document.getElementById('dynamic-header-actions');
             if (dynamicHeader) {
                 if (page === 'inventory' && window.isAuthenticated) {
                     dynamicHeader.innerHTML = `<button class="btn-primary" onclick="window.showForm();" style="padding: 6px 14px; border-radius:8px; font-size: 0.85rem;"><i class="fas fa-plus"></i> <span data-i18n="add_service">Add Service</span></button>`;
+                } else if (page === 'partners' && window.isAuthenticated) {
+                    dynamicHeader.innerHTML = `<button class="btn-primary" onclick="window.showPartnerForm();" style="padding: 6px 14px; border-radius:8px; font-size: 0.85rem;"><i class="fas fa-plus"></i> <span data-i18n="add_partner">Add Partner</span></button>`;
                 } else {
                     dynamicHeader.innerHTML = '';
                 }
@@ -174,7 +183,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             else if (page === 'inventory') {
-                // FIX [02.04.2026]: Умный и регистронезависимый поиск по name и supplierName
                 let filteredInventory = inventory;
                 
                 if (searchQuery) {
@@ -249,18 +257,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 const searchInput = document.getElementById('search-input');
                 if (searchInput) {
-                    // Восстанавливаем фокус и курсор после рендера, чтобы не прерывать печать
                     if (searchQuery.length > 0) {
                         searchInput.focus();
                         const valLen = searchInput.value.length;
                         searchInput.setSelectionRange(valLen, valLen);
                     }
 
-                    // FIX [02.04.2026]: Механизм Debounce (300мс) и мгновенный сброс
                     searchInput.addEventListener('input', (e) => {
                         const val = e.target.value;
                         
-                        if (!val) { // Если инпут очищен - мгновенный сброс
+                        if (!val) { 
                             searchQuery = "";
                             window.render('inventory');
                             return;
@@ -278,8 +284,38 @@ document.addEventListener('DOMContentLoaded', async () => {
             else if (page === 'bookings') {
                 content.innerHTML = `<div style="padding:15px;"><h2 data-i18n="nav_bookings">Bookings</h2><p style="color:#666;" data-i18n="under_construction">Section Under Construction</p></div>`;
             }
+
+            // FIX [02.04.2026]: Рендер страницы Партнеров
             else if (page === 'partners') {
-                content.innerHTML = `<div style="padding:15px;"><h2 data-i18n="nav_partners">Partners</h2><p style="color:#666;" data-i18n="under_construction">Section Under Construction</p></div>`;
+                const partnersHtml = partners.map(p => {
+                    let badgeClass = p.type === 'Hotel' ? 'badge-hotel' : 'badge-transport';
+                    let verifiedBadge = p.is_verified ? `<span class="verified-icon" title="Verified" style="color:#27ae60;"><i class="fas fa-check-circle"></i></span>` : '';
+                    
+                    return `
+                    <div class="card tour-card fade-in" style="padding: 20px;">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                            <div>
+                                <span class="badge ${badgeClass}">${t(p.type?.toLowerCase()) || p.type || 'Partner'}</span>
+                                <h3 style="margin-top: 10px; display:flex; align-items:center; gap:8px;">
+                                    ${p.name} ${verifiedBadge}
+                                </h3>
+                                <p style="margin: 8px 0 4px 0; font-size: 0.9rem; color: #555;"><i class="fas fa-user" style="color:var(--primary); width:20px;"></i> ${p.contact || 'N/A'}</p>
+                                <p style="margin: 0; font-size: 0.9rem; color: #555;"><i class="fas fa-phone" style="color:var(--primary); width:20px;"></i> ${p.phone || 'N/A'}</p>
+                            </div>
+                            ${p.documentUrl ? `<a href="${p.documentUrl}" target="_blank" style="color:var(--dark); font-size:1.8rem; transition:0.2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--dark)'"><i class="fas fa-file-pdf"></i></a>` : ''}
+                        </div>
+                        ${window.isAuthenticated ? `
+                        <div style="display:flex; gap:10px; margin-top:20px; border-top: 1px solid #f0f2f5; padding-top: 15px;">
+                            <button onclick="window.deletePartner('${p.id}')" class="btn-action btn-delete" style="flex:1;"><i class="fas fa-trash"></i> Удалить</button>
+                        </div>` : ''}
+                    </div>`
+                }).join('');
+
+                content.innerHTML = `
+                    <div style="padding:15px 15px 100px 15px;">
+                        <h2 style="margin-bottom: 20px;" data-i18n="partners_list">Our Partners</h2>
+                        <div id="tours-list">${partnersHtml || '<p style="text-align:center; color:#888;">Нет добавленных партнеров</p>'}</div>
+                    </div>`;
             }
             
             else if (page === 'profile') {
@@ -479,6 +515,121 @@ document.addEventListener('DOMContentLoaded', async () => {
                 saveBtn.disabled = false;
                 saveBtn.innerHTML = originalText;
             }
+        }
+    };
+
+    // ==========================================
+    // FIX [02.04.2026]: МОДУЛЬ ПАРТНЕРОВ (UI & Firebase Logic)
+    // ==========================================
+    
+    window.deletePartner = async (id) => { 
+        if(confirm('Точно удалить этого партнера?')) {
+            try { await remove(ref(db, `partners/${id}`)); } 
+            catch(e) { console.error("Delete error:", e); }
+        } 
+    };
+
+    window.showPartnerForm = function() {
+        const existingModal = document.getElementById('partner-modal');
+        if (existingModal) existingModal.remove();
+
+        const modalHtml = `
+        <div class="modal-overlay" id="partner-modal">
+            <div class="modal-content">
+                <form id="partner-form" onsubmit="window.handlePartnerSave(event)" novalidate>
+                    <div class="modal-header">
+                        <h2 data-i18n="add_partner">Add Partner</h2>
+                        <button type="button" class="modal-close" onclick="document.getElementById('partner-modal').remove()"><i class="fas fa-times"></i></button>
+                    </div>
+                    
+                    <div class="modal-body">
+                        <label class="input-label" data-i18n="company_name">Company Name</label>
+                        <input type="text" id="p-name" required placeholder="Caspian Hotels LLC">
+                        
+                        <label class="input-label" data-i18n="partner_type">Partner Type</label>
+                        <select id="p-type">
+                            <option value="Hotel">${t('hotel')}</option>
+                            <option value="Transport">${t('transport')}</option>
+                        </select>
+                        
+                        <div style="display:flex; gap:15px;">
+                            <div style="flex:1;">
+                                <label class="input-label" data-i18n="contact_person">Contact Person</label>
+                                <input type="text" id="p-contact" required>
+                            </div>
+                            <div style="flex:1;">
+                                <label class="input-label" data-i18n="phone">Phone</label>
+                                <input type="tel" id="p-phone" required placeholder="+994...">
+                            </div>
+                        </div>
+                        
+                        <label class="input-label" data-i18n="upload_license">Upload License / VÖEN</label>
+                        <input type="file" id="p-document" accept=".pdf,image/*" style="padding: 10px; margin-bottom: 15px; border: 1px solid #e1e4e8; border-radius: 8px; width: 100%; box-sizing: border-box;">
+
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="p-verified">
+                            <span data-i18n="verified_partner">Verified Partner</span>
+                        </label>
+                    </div>
+                    
+                    <div class="modal-footer">
+                        <button type="button" class="btn-action btn-edit" style="flex:1; padding:14px;" onclick="document.getElementById('partner-modal').remove()" data-i18n="cancel">CANCEL</button>
+                        <button type="submit" class="save-btn" id="save-partner-btn" style="flex:2; padding:14px;" data-i18n="save_item">SAVE</button>
+                    </div>
+                </form>
+            </div>
+        </div>`;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        applyTranslations();
+        setTimeout(() => document.getElementById('partner-modal').classList.add('active'), 10);
+    };
+
+    window.handlePartnerSave = async function(e) {
+        e.preventDefault(); 
+        
+        const saveBtn = document.getElementById('save-partner-btn');
+        const originalText = saveBtn.innerHTML;
+        
+        const nameField = document.getElementById('p-name').value.trim();
+        if (!nameField) return alert("Введите название компании!");
+
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Загрузка...';
+
+        try {
+            let documentUrl = "";
+            const fileInput = document.getElementById('p-document');
+            
+            // Загрузка документа в Firebase Storage
+            if (fileInput && fileInput.files.length > 0 && storageRef) {
+                const file = fileInput.files[0];
+                const docReference = storageRef(storage, `partners_docs/${Date.now()}_${file.name}`);
+                const uploadResult = await uploadBytes(docReference, file);
+                documentUrl = await getDownloadURL(uploadResult.ref);
+            }
+
+            // Формирование объекта партнера
+            const partnerData = {
+                name: nameField,
+                type: document.getElementById('p-type').value,
+                contact: document.getElementById('p-contact').value.trim(),
+                phone: document.getElementById('p-phone').value.trim(),
+                is_verified: document.getElementById('p-verified').checked,
+                documentUrl: documentUrl,
+                createdAt: Date.now()
+            };
+            
+            // Сохранение в Firebase RTDB
+            await push(ref(db, 'partners'), partnerData);
+            
+            document.getElementById('partner-modal').remove();
+
+        } catch (err) {
+            console.error("Ошибка сохранения партнера:", err);
+            alert("Ошибка: " + err.message);
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalText;
         }
     };
 });

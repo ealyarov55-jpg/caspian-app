@@ -13,44 +13,48 @@ body { font-family: 'Inter', sans-serif; background-color: var(--bg); margin: 0;
 h1, h2, h3, h4, .logo-text { font-family: 'Montserrat', sans-serif; font-weight: 700; }
 .logo-text:hover { opacity: 0.8; }
 
-.top-actions {
-    display: flex !important;
-    flex-direction: row-reverse;
-    gap: 15px;
-    align-items: center;
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 1000;
-}
-
-.lang-switch {
-    background: rgba(11, 29, 42, 0.85);
-    color: white;
-    padding: 8px 16px;
-    border-radius: 8px;
-    font-family: 'Montserrat', sans-serif;
-    font-size: 0.75rem;
-    font-weight: 600;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    backdrop-filter: blur(4px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.lang-switch span { cursor: pointer; transition: color 0.2s; padding: 0 6px; }
-.lang-switch span:hover { color: #00ffcc; }
-
+/* FIX [02.04.2026]: Глобальный фиксированный Header с высшим приоритетом */
 .app-header { 
-    background: var(--grad); color: white; padding: 18px 20px; 
-    position: sticky; top: 0; z-index: 100; box-shadow: 0 4px 15px rgba(0,0,0,0.05); 
+    background: var(--grad); color: white; padding: 10px 20px; 
+    position: fixed; top: 0; left: 0; z-index: 2500; box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
     display: flex; justify-content: space-between; align-items: center; 
-    height: 70px; box-sizing: border-box;
+    height: 70px; box-sizing: border-box; width: 100%;
 }
+.header-left { padding-left: 10px; display: flex; align-items: center; }
+.header-right { display: flex; align-items: center; gap: 15px; position: relative; }
+
+/* FIX [02.04.2026]: Настройки Dropdown (pointer-events и z-index) */
+.lang-dropdown { position: relative; display: flex; align-items: center; cursor: pointer; height: 100%; }
+.lang-dropdown .dropbtn { font-size: 1.4rem; color: white; transition: 0.3s ease; pointer-events: none; }
+.lang-dropdown:hover .dropbtn { color: #00ffcc; transform: scale(1.1); }
+
+.dropdown-content {
+    display: none; position: absolute; right: 0; top: 40px; background-color: #ffffff; 
+    min-width: 80px; box-shadow: 0px 10px 30px rgba(0,0,0,0.3); z-index: 9999; 
+    border-radius: 12px; overflow: hidden; border: 1px solid #f0f2f5;
+    pointer-events: auto; /* Жестко разрешаем клики */
+}
+.dropdown-content span {
+    color: #333; padding: 14px 16px; text-decoration: none; display: block; 
+    font-family: 'Montserrat', sans-serif; font-size: 0.85rem; font-weight: 700; 
+    text-align: center; cursor: pointer; transition: background-color 0.2s, color 0.2s;
+    pointer-events: auto; 
+}
+.dropdown-content span:hover, .dropdown-content span:active { 
+    background-color: #f8f9fa; color: var(--primary); 
+}
+.lang-dropdown:hover .dropdown-content { display: block; }
+
+.content-area { padding-top: 80px; min-height: 100vh; box-sizing: border-box; }
 
 @media (max-width: 768px) {
-    .top-actions { top: 15px; right: 15px; gap: 8px; flex-direction: row; }
-    .lang-switch { padding: 6px 10px; font-size: 0.65rem; }
-    .logo-text { font-size: 1.2rem; max-width: 120px; display: inline-block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .app-header { padding: 10px 15px; }
+    .logo-text { font-size: 1.2rem; max-width: 130px; display: inline-block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .header-right { gap: 10px; }
+    
+    #dynamic-header-actions span { display: none !important; }
+    #dynamic-header-actions button { padding: 10px 14px !important; border-radius: 50% !important; margin: 0 !important; width: 40px; height: 40px; }
+    #dynamic-header-actions button i { margin: 0 !important; font-size: 1.1rem; }
 }
 
 .card { background: #ffffff; margin: 15px 0; padding: 20px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); position: relative; transition: all 0.3s ease; border: none; }
@@ -93,7 +97,6 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--p
 
 #tours-list { display: grid; grid-template-columns: 1fr; gap: 24px; padding-bottom: 100px; margin-top: 15px; }
 
-.sidebar-logo { display: none; }
 .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(255,255,255,0.98); backdrop-filter: blur(10px); display: flex; justify-content: space-around; align-items: center; padding: 12px 0; border-top: 1px solid #f0f0f0; z-index: 2000; }
 .bottom-nav button { background: none; border: none; color: #a0aab2; font-size: 0.75rem; display: flex; flex-direction: column; align-items: center; font-family: 'Inter', sans-serif; transition: 0.3s ease; width: 100%; }
 .bottom-nav button.active { color: var(--primary); font-weight: 600; }
@@ -101,76 +104,48 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--p
 .bottom-nav button.active i { transform: translateY(-2px); }
 
 @media (min-width: 768px) {
-    .content-area { margin-left: 260px; display: flex; justify-content: center; min-height: 100vh; padding: 30px; }
+    .content-area { margin-left: 260px; display: flex; justify-content: center; padding: 100px 30px 30px 30px; }
     .content { width: 100%; max-width: 1200px; padding-bottom: 40px; }
-    .app-header { display: none; }
-    .bottom-nav { top: 0; left: 0; bottom: auto; width: 260px; height: 100vh; flex-direction: column; justify-content: flex-start; align-items: stretch; background-color: var(--sidebar-bg); padding-top: 40px; box-shadow: 10px 0 30px rgba(0,0,0,0.03); border-top: none; }
-    .sidebar-logo { display: block; color: white; font-size: 1.6rem; text-align: center; margin-bottom: 50px; letter-spacing: 1px; }
-    .sidebar-logo b { color: var(--primary); }
+    
+    .bottom-nav { top: 70px; left: 0; bottom: auto; width: 260px; height: calc(100vh - 70px); flex-direction: column; justify-content: flex-start; align-items: stretch; background-color: var(--sidebar-bg); padding-top: 30px; box-shadow: 10px 0 30px rgba(0,0,0,0.03); border-top: none; }
     .bottom-nav button { flex-direction: row; padding: 18px 30px; color: #8da2b5; font-size: 1.05rem; justify-content: flex-start; }
     .bottom-nav button i { margin-bottom: 0; margin-right: 15px; font-size: 1.3rem; width: 24px; text-align: center; }
     .bottom-nav button:hover { color: white; background: rgba(255,255,255,0.03); }
     .bottom-nav button.active { color: white; background: rgba(0, 175, 185, 0.1); border-left: 4px solid var(--primary); }
     .bottom-nav button.active i { transform: none; }
+    
     #tours-list { grid-template-columns: repeat(2, 1fr); padding-bottom: 40px; }
     .logout-nav-btn { margin-top: auto; border-top: 1px solid rgba(255,255,255,0.05); }
 }
 @media (min-width: 1024px) { #tours-list { grid-template-columns: repeat(3, 1fr); } }
 
-/* === ИДЕАЛЬНАЯ МОДАЛКА (SCROLL FIX & STICKY ELEMENTS) === */
+/* === ИДЕАЛЬНАЯ МОДАЛКА === */
 .modal-overlay { 
     position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
     background: rgba(11, 29, 42, 0.6); backdrop-filter: blur(5px); 
     display: flex; align-items: center; justify-content: center; 
-    z-index: 3000; opacity: 0; visibility: hidden; transition: all 0.3s ease; 
-    padding: 10px; 
-    box-sizing: border-box;
+    z-index: 4000; opacity: 0; visibility: hidden; transition: all 0.3s ease; 
+    padding: 10px; box-sizing: border-box;
 }
 .modal-overlay.active { opacity: 1; visibility: visible; }
 
 .modal-content { 
-    background: #ffffff; 
-    width: 95%; 
-    max-width: 600px; 
-    max-height: 90vh !important; /* Жестко ограничили высоту экраном */
-    border-radius: 20px; 
-    box-shadow: 0 20px 40px rgba(0,0,0,0.1); 
-    display: block !important; /* Убили флекс, чтобы заработал скролл */
-    overflow-y: auto !important; /* Контейнер прокручивается */
+    background: #ffffff; width: 95%; max-width: 600px; max-height: 90vh !important; 
+    border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); 
+    display: block !important; overflow-y: auto !important; 
     transform: translateY(30px); transition: all 0.3s ease; 
 }
 .modal-overlay.active .modal-content { transform: translateY(0); }
 
-/* ФОРМА (Чтобы sticky работал, она должна занимать 100%) */
-#service-form {
-    display: block;
-    min-height: 100%;
-}
+#service-form { display: block; min-height: 100%; }
 
-/* ФИКСИРОВАННАЯ ШАПКА */
-.modal-header { 
-    position: sticky; top: 0; 
-    padding: 20px 25px; border-bottom: 1px solid #f0f2f5; 
-    display: flex; justify-content: space-between; align-items: center; 
-    background: #fff; z-index: 20; 
-}
+.modal-header { position: sticky; top: 0; padding: 20px 25px; border-bottom: 1px solid #f0f2f5; display: flex; justify-content: space-between; align-items: center; background: #fff; z-index: 20; }
 .modal-header h2 { margin: 0; font-size: 1.4rem; color: #1a1a1a; font-family: 'Montserrat', sans-serif;}
 .modal-close { background: none; border: none; font-size: 1.5rem; color: #a0aab2; cursor: pointer; transition: 0.2s; padding: 0; width: auto; height: auto; }
 .modal-close:hover { color: var(--danger); transform: scale(1.1); }
 
-/* КОНТЕНТ ФОРМЫ */
-.modal-body { 
-    padding: 20px 25px; 
-}
-
-/* ФИКСИРОВАННЫЙ ПОДВАЛ (По твоему ТЗ) */
-.modal-footer { 
-    position: sticky; bottom: -1px; /* -1px убирает микро-щель в мобильных браузерах */
-    padding: 20px 25px; border-top: 1px solid #f0f2f5; 
-    display: flex; gap: 15px; background: #f8f9fa; 
-    z-index: 20;
-}
-
+.modal-body { padding: 20px 25px; }
+.modal-footer { position: sticky; bottom: -1px; padding: 20px 25px; border-top: 1px solid #f0f2f5; display: flex; gap: 15px; background: #f8f9fa; z-index: 20; }
 .input-label { font-size: 0.85rem; font-weight: 600; color: #555; margin-bottom: 5px; margin-top: 15px; display: block; font-family: 'Inter', sans-serif; }
 .input-label:first-child { margin-top: 0; }
 

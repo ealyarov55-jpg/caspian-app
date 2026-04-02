@@ -9,29 +9,40 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="style.css">
+
+    <script>
+        window.addEventListener('unhandledrejection', function(event) {
+            if (event.reason && event.reason.message && event.reason.message.includes('Could not establish connection')) {
+                event.preventDefault(); 
+                console.warn('🛡️ [Caspian DMC] Заблокирован конфликт Chrome-расширения.');
+            }
+        });
+    </script>
 </head>
 <body>
     <div id="auth-loader" class="auth-loader"><div class="spinner"></div></div>
 
-    <div class="top-actions" id="top-actions">
-        <div class="lang-switch">
-            <span onclick="window.setLanguage('en')">EN</span> | 
-            <span onclick="window.setLanguage('az')">AZ</span> | 
-            <span onclick="window.setLanguage('ru')">RU</span>
-        </div>
-        <div id="dynamic-header-actions"></div>
-    </div>
-
     <header class="app-header">
-        <div class="header-content">
+        <div class="header-left">
             <span class="logo-text" onclick="window.render('home')" style="cursor: pointer;">CASPIAN<b>DMC</b></span>
+        </div>
+        <div class="header-right">
+            <div id="dynamic-header-actions" class="dynamic-actions-container"></div>
+            
+            <div class="lang-dropdown">
+                <i class="fas fa-globe dropbtn"></i>
+                <div class="dropdown-content">
+                    <span onclick="window.setLanguage('en'); this.parentElement.style.display='none'; setTimeout(()=>this.parentElement.style.display='', 100);">EN</span>
+                    <span onclick="window.setLanguage('az'); this.parentElement.style.display='none'; setTimeout(()=>this.parentElement.style.display='', 100);">AZ</span>
+                    <span onclick="window.setLanguage('ru'); this.parentElement.style.display='none'; setTimeout(()=>this.parentElement.style.display='', 100);">RU</span>
+                </div>
+            </div>
         </div>
     </header>
 
     <div class="content-area"><main class="content" id="app-content"></main></div>
 
     <nav class="bottom-nav" style="display: none;">
-        <div class="sidebar-logo">CASPIAN<b>DMC</b></div>
         <button onclick="window.render('home')" id="nav-home"><i class="fas fa-chart-line"></i><span data-i18n="dashboard">Dashboard</span></button>
         <button onclick="window.render('inventory')" id="nav-inventory"><i class="fas fa-box-open"></i><span data-i18n="inventory">Inventory</span></button>
         <button onclick="window.render('bookings')" id="nav-bookings"><i class="far fa-calendar-check"></i><span data-i18n="nav_bookings">Bookings</span></button>
@@ -53,7 +64,7 @@
         authDomain: "caspianapp-c5d1c.firebaseapp.com",
         projectId: "caspianapp-c5d1c",
         databaseURL: "https://caspianapp-c5d1c-default-rtdb.firebaseio.com/",
-        storageBucket: "caspianapp-c5d1c.firebasestorage.app", // <--- КРИТИЧЕСКИЙ ФИКС ЗДЕСЬ
+        storageBucket: "caspianapp-c5d1c.firebasestorage.app", 
         appId: "1:17997434765:web:fe856309a8c687d8aef7c4"
       };
 

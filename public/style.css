@@ -41,9 +41,7 @@ h1, h2, h3, h4 { font-family: 'Montserrat', sans-serif; font-weight: 700; }
     text-align: center; cursor: pointer; transition: background-color 0.2s, color 0.2s;
     pointer-events: auto; 
 }
-.dropdown-content span:hover, .dropdown-content span:active { 
-    background-color: #f8f9fa; color: var(--primary); 
-}
+.dropdown-content span:hover, .dropdown-content span:active { background-color: #f8f9fa; color: var(--primary); }
 
 .content-area { padding-top: 80px; min-height: 100vh; box-sizing: border-box; }
 
@@ -56,7 +54,6 @@ h1, h2, h3, h4 { font-family: 'Montserrat', sans-serif; font-weight: 700; }
 @media (max-width: 600px) {
     .logo-text { font-size: 1.1rem; } 
     .header-right { gap: 12px; }
-    
     #dynamic-header-actions button span { display: none !important; }
     #dynamic-header-actions button { 
         padding: 0 !important; border-radius: 50% !important; margin: 0 !important; 
@@ -106,29 +103,50 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--p
 
 #tours-list { display: grid; grid-template-columns: 1fr; gap: 24px; padding-bottom: 100px; margin-top: 15px; }
 
+/* Мобильный сайдбар */
 .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(255,255,255,0.98); backdrop-filter: blur(10px); display: flex; justify-content: space-around; align-items: center; padding: 12px 0; border-top: 1px solid #f0f0f0; z-index: 2000; }
 .bottom-nav button { background: none; border: none; color: #a0aab2; font-size: 0.75rem; display: flex; flex-direction: column; align-items: center; font-family: 'Inter', sans-serif; transition: 0.3s ease; width: 100%; }
 .bottom-nav button.active { color: var(--primary); font-weight: 600; }
 .bottom-nav i { font-size: 1.3rem; margin-bottom: 4px; transition: transform 0.3s ease; }
 .bottom-nav button.active i { transform: translateY(-2px); }
+.nav-links-container { display: contents; } 
+.logout-container { display: contents; }
 
+/* FIX [04.04.2026]: ЖЕСТКИЙ ФИКС САЙДБАРА (Desktop) */
 @media (min-width: 768px) {
     .content-area { margin-left: 260px; display: flex; justify-content: center; padding: 100px 30px 30px 30px; }
     .content { width: 100%; max-width: 1200px; padding-bottom: 40px; }
     
-    .bottom-nav { top: 70px; left: 0; bottom: auto; width: 260px; height: calc(100vh - 70px); flex-direction: column; justify-content: flex-start; align-items: stretch; background-color: var(--sidebar-bg); padding-top: 30px; box-shadow: 10px 0 30px rgba(0,0,0,0.03); border-top: none; }
+    .sidebar { 
+        position: fixed;
+        top: 70px; left: 0; bottom: 0; width: 260px; 
+        height: calc(100vh - 70px); 
+        display: flex !important; flex-direction: column; 
+        background-color: var(--sidebar-bg); box-shadow: 10px 0 30px rgba(0,0,0,0.03); 
+        border-top: none; padding: 0; z-index: 1500;
+    }
+    .sidebar-logo { display: block; color: white; font-size: 1.6rem; text-align: center; padding: 30px 20px 20px; letter-spacing: 1px; }
+    
+    /* Зона скролла ссылок */
+    .nav-links-container { display: flex; flex-direction: column; flex-grow: 1; overflow-y: auto; padding-top: 10px; }
+    
+    /* Зона логаута (всегда внизу) */
+    .logout-container { display: block; padding: 20px; border-top: 1px solid rgba(255,255,255,0.05); background-color: var(--sidebar-bg); margin-top: auto; }
+
     .bottom-nav button { flex-direction: row; padding: 18px 30px; color: #8da2b5; font-size: 1.05rem; justify-content: flex-start; }
     .bottom-nav button i { margin-bottom: 0; margin-right: 15px; font-size: 1.3rem; width: 24px; text-align: center; }
     .bottom-nav button:hover { color: white; background: rgba(255,255,255,0.03); }
     .bottom-nav button.active { color: white; background: rgba(0, 175, 185, 0.1); border-left: 4px solid var(--primary); }
     .bottom-nav button.active i { transform: none; }
     
+    .logout-nav-btn { color: #f07167 !important; padding: 15px !important; border-radius: 8px; transition: 0.2s; width: 100%; justify-content: center; }
+    .logout-nav-btn:hover { background: rgba(240, 113, 103, 0.1) !important; color: #ff8a80 !important; }
+    
     #tours-list { grid-template-columns: repeat(2, 1fr); padding-bottom: 40px; }
-    .logout-nav-btn { margin-top: auto; border-top: 1px solid rgba(255,255,255,0.05); }
 }
 @media (min-width: 1024px) { #tours-list { grid-template-columns: repeat(3, 1fr); } }
 
-/* === ИДЕАЛЬНАЯ МОДАЛКА === */
+/* === МОДАЛКИ === */
 .modal-overlay { 
     position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
     background: rgba(11, 29, 42, 0.6); backdrop-filter: blur(5px); 
@@ -174,19 +192,45 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--p
 .spinner { width: 50px; height: 50px; border: 4px solid rgba(255, 255, 255, 0.1); border-left-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-/* FIX [02.04.2026]: Стили для печати Инвойса. Скрывают всё лишнее и выводят только документ. */
+/* FIX [04.04.2026]: CSS Grid Calendar + Tabs */
+.profile-tabs { display: flex; gap: 15px; border-bottom: 2px solid #f0f2f5; margin-bottom: 25px; overflow-x: auto; white-space: nowrap; padding-bottom: 5px; }
+.tab-btn { background: none; border: none; padding: 12px 20px; font-family: 'Montserrat', sans-serif; font-size: 0.95rem; font-weight: 700; color: #a0aab2; cursor: pointer; transition: 0.2s; border-bottom: 3px solid transparent; }
+.tab-btn:hover { color: #555; }
+.tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+.tab-content { display: none; animation: fadeIn 0.3s; }
+.tab-content.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+.calendar-month { margin-bottom: 30px; }
+.calendar-month-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 2px solid #f0f2f5; padding-bottom: 10px; }
+.calendar-month-header h4 { margin: 0; font-size: 1.2rem; color: var(--dark); font-family: 'Montserrat', sans-serif; }
+.calendar-bulk-actions button { background: white; border: 1px solid var(--primary); color: var(--primary); padding: 6px 12px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: 0.2s; margin-left: 8px; }
+.calendar-bulk-actions button:hover { background: var(--primary); color: white; }
+
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.cal-day-name { text-align: center; font-weight: 700; color: #a0aab2; font-size: 0.8rem; text-transform: uppercase; padding-bottom: 5px; }
+
+.cal-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 65px; border-radius: 10px; transition: all 0.2s ease; position: relative; user-select: none; }
+.cal-cell.empty { background: transparent; border: none; }
+.cal-cell.past { background: #f8f9fa; color: #ccc; cursor: not-allowed; border: 1px solid #eee; }
+.cal-cell.available { background: #e8f5e9; border: 2px solid #27ae60; color: #27ae60; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(39, 174, 96, 0.1); }
+.cal-cell.available:hover { transform: scale(1.05); background: #d4efdf; box-shadow: 0 4px 15px rgba(39,174,96,0.3); z-index: 10;}
+.cal-cell.blocked { background: #f0f2f5; border: 1px solid #d1d5db; color: #888; cursor: pointer; }
+.cal-cell.blocked:hover { transform: scale(1.05); background: #e2e4e8; color: #333; box-shadow: 0 4px 15px rgba(0,0,0,0.1); z-index: 10; }
+.cal-date-num { font-size: 1.15rem; font-weight: 800; font-family: 'Montserrat', sans-serif; }
+.cal-status-icon { font-size: 0.75rem; margin-top: 3px; font-weight: 800; }
+
+.buyer-cal-day { padding:10px 0; border-radius:8px; border:1px solid #d1d5db; color:var(--dark); cursor:pointer; font-size:0.85rem; font-weight:700; text-align: center; transition: 0.1s; background: white; }
+.buyer-cal-day:hover { border-color: var(--primary); color: var(--primary); }
+.buyer-cal-day.selected { background: #008b8b !important; color: white !important; border-color: #008b8b !important; }
+.buyer-cal-day.in-range { background: rgba(0, 139, 139, 0.15) !important; color: #008b8b !important; border-color: #008b8b !important; border-style: dashed !important; }
+.buyer-cal-day.blocked { background: #f0f2f5; color: #ccc; cursor: not-allowed; border-color: #eee; }
+
 @media print {
     body * { visibility: hidden; }
     #invoice-print-area, #invoice-print-area * { visibility: visible; }
-    #invoice-print-area { 
-        position: absolute; left: 0; top: 0; width: 100%; 
-        margin: 0; padding: 20px; box-sizing: border-box; 
-        background: white; 
-    }
+    #invoice-print-area { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 20px; box-sizing: border-box; background: white; }
     .no-print { display: none !important; }
     .modal-overlay { background: transparent !important; }
-    .modal-content { 
-        box-shadow: none !important; transform: none !important; 
-        width: 100% !important; max-height: none !important; overflow: visible !important;
-    }
+    .modal-content { box-shadow: none !important; transform: none !important; width: 100% !important; max-height: none !important; overflow: visible !important;}
 }

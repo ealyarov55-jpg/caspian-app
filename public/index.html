@@ -18,7 +18,6 @@
         window.addEventListener('unhandledrejection', function(event) {
             if (event.reason && event.reason.message && event.reason.message.includes('Could not establish connection')) {
                 event.preventDefault(); 
-                console.warn('🛡️ [Caspian DMC] Заблокирован конфликт Chrome-расширения.');
             }
         });
     </script>
@@ -46,15 +45,21 @@
 
     <div class="content-area"><main class="content" id="app-content"></main></div>
 
-    <nav class="bottom-nav" style="display: none;">
-        <button onclick="window.render('home')" id="nav-home"><i class="fas fa-chart-line"></i><span data-i18n="dashboard">Dashboard</span></button>
-        <button onclick="window.render('inventory')" id="nav-inventory"><i class="fas fa-box-open"></i><span data-i18n="inventory">Inventory</span></button>
-        <button onclick="window.render('bookings')" id="nav-bookings"><i class="far fa-calendar-check"></i><span data-i18n="nav_bookings">Bookings</span></button>
-        <button onclick="window.render('partners')" id="nav-partners"><i class="fas fa-handshake"></i><span data-i18n="nav_partners">Partners</span></button>
+    <nav class="bottom-nav sidebar" style="display: none;">
+        <div class="sidebar-logo" style="display: none;">CASPIAN<b>DMC</b></div>
         
-        <button onclick="window.render('profile')" id="nav-profile" style="display: none;"><i class="fas fa-user-shield"></i><span data-i18n="nav_profile">Profile</span></button>
-        <button onclick="window.render('login')" id="nav-login" style="display: none;"><i class="fas fa-sign-in-alt"></i><span data-i18n="nav_login">Login</span></button>
-        <button onclick="window.logout()" id="nav-logout" class="logout-nav-btn" style="display: none;"><i class="fas fa-sign-out-alt"></i><span data-i18n="logout">Logout</span></button>
+        <div class="nav-links-container">
+            <button onclick="window.render('home')" id="nav-home"><i class="fas fa-chart-line"></i><span data-i18n="dashboard">Dashboard</span></button>
+            <button onclick="window.render('inventory')" id="nav-inventory"><i class="fas fa-box-open"></i><span data-i18n="inventory">Inventory</span></button>
+            <button onclick="window.render('bookings')" id="nav-bookings"><i class="far fa-calendar-check"></i><span data-i18n="nav_bookings">Bookings</span></button>
+            <button onclick="window.render('partners')" id="nav-partners"><i class="fas fa-handshake"></i><span data-i18n="nav_partners">Partners</span></button>
+            <button onclick="window.render('profile')" id="nav-profile" style="display: none;"><i class="fas fa-user-shield"></i><span data-i18n="nav_profile">Profile</span></button>
+            <button onclick="window.render('login')" id="nav-login" style="display: none;"><i class="fas fa-sign-in-alt"></i><span data-i18n="nav_login">Login</span></button>
+        </div>
+
+        <div class="logout-container" style="display: none;" id="logout-container">
+            <button onclick="window.logout()" id="nav-logout" class="logout-nav-btn"><i class="fas fa-sign-out-alt"></i><span data-i18n="logout">Logout</span></button>
+        </div>
     </nav>
 
     <script>
@@ -63,16 +68,8 @@
             const langMenu = document.getElementById('langMenu');
             const langItems = langMenu.querySelectorAll('span');
 
-            langBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                langMenu.classList.toggle('show-menu');
-            });
-
-            document.addEventListener('click', () => {
-                if (langMenu.classList.contains('show-menu')) {
-                    langMenu.classList.remove('show-menu');
-                }
-            });
+            langBtn.addEventListener('click', (e) => { e.stopPropagation(); langMenu.classList.toggle('show-menu'); });
+            document.addEventListener('click', () => { if (langMenu.classList.contains('show-menu')) langMenu.classList.remove('show-menu'); });
 
             langItems.forEach(item => {
                 item.addEventListener('click', (e) => {
@@ -111,6 +108,6 @@
       window.storage = getStorage(app);
       window.storageFunc = { storageRef, uploadBytes, getDownloadURL };
     </script>
-    <script type="module" src="app2.js?v=02042026"></script>
+    <script type="module" src="app2.js?v=04042026"></script>
 </body>
 </html>

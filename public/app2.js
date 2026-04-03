@@ -16,7 +16,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const { db, dbFunc, auth, authFunc, storage, storageFunc } = window;
     const { ref, push, set, onValue, remove, update } = dbFunc;
     const { signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } = authFunc;
-    
     const { storageRef, uploadBytes, getDownloadURL } = storageFunc || {};
 
     let inventory = []; 
@@ -31,6 +30,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.bookingFilter = 'All';
     window.regionFilter = 'All';
     window.starsFilter = 'All';
+    window.selectedDates = []; 
     
     window.currentUserUid = null;
     window.currentUserRole = null;
@@ -40,10 +40,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     catch (e) { console.error("i18n init error:", e); }
 
     window.setLanguage = async (lang) => { 
-        try {
-            await loadLanguage(lang); 
-            window.render(currentPage); 
-        } catch (e) { console.error("Language switch error:", e); }
+        try { await loadLanguage(lang); window.render(currentPage); } 
+        catch (e) { console.error("Language switch error:", e); }
     };
     
     window.updateNavigationByRole = (role) => {
@@ -52,6 +50,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const navBook = document.getElementById('nav-bookings');
         const navPart = document.getElementById('nav-partners');
         const navProf = document.getElementById('nav-profile');
+        const logoutCont = document.getElementById('logout-container');
 
         if(role === 'admin') {
             if(navHome) navHome.style.display = 'flex';
@@ -62,7 +61,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else if(role === 'partner') {
             if(navHome) navHome.style.display = 'none';
             if(navInv) navInv.style.display = 'flex';
-            if(navBook) navBook.style.display = 'flex';
+            if(navBook) navBook.style.display = 'none'; // Partner only manages inventory
             if(navPart) navPart.style.display = 'none';
             if(navProf) navProf.style.display = 'flex';
         } else if(role === 'buyer') {
@@ -71,6 +70,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             if(navBook) navBook.style.display = 'flex';
             if(navPart) navPart.style.display = 'none';
             if(navProf) navProf.style.display = 'flex';
+        }
+        
+        if (role) {
+            if(logoutCont) logoutCont.style.display = 'block';
         }
     };
 
@@ -101,7 +104,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const email = emailInput.value.trim();
         const pass = passInput.value.trim();
         if (!email || !pass) return; 
-
         try { await signInWithEmailAndPassword(auth, email, pass); } 
         catch (error) { alert("Access Denied: " + error.message); }
     };
@@ -116,7 +118,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 onValue(ref(db, `users/${user.uid}`), (snapshot) => {
                     let profile = snapshot.val();
                     if (!profile) {
-                        profile = { role: 'admin', companyName: 'Caspian DMC Admin', is_verified: true };
+                        profile = { role: 'admin', companyName: 'Caspian DMC Admin', is_verified: true, partnerType: 'Hotel' };
                         set(ref(db, `users/${user.uid}`), profile);
                     }
                     window.currentUserRole = profile.role || 'buyer';
@@ -124,8 +126,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     window.updateNavigationByRole(window.currentUserRole);
                     
                     const loginBtn = document.getElementById('nav-login');
-                    const logoutBtn = document.getElementById('nav-logout');
-                    if (logoutBtn) logoutBtn.style.display = 'flex';
                     if (loginBtn) loginBtn.style.display = 'none';
 
                     if (currentPage === 'login') {
@@ -147,8 +147,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 window.currentUserProfile = null;
                 
                 const loginBtn = document.getElementById('nav-login');
-                const logoutBtn = document.getElementById('nav-logout');
-                if (logoutBtn) logoutBtn.style.display = 'none';
+                const logoutCont = document.getElementById('logout-container');
+                if (logoutCont) logoutCont.style.display = 'none';
                 if (loginBtn) loginBtn.style.display = 'flex';
                 
                 if (!isAuthReady) {
@@ -191,7 +191,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             document.querySelector('.bottom-nav').style.display = page === 'login' ? 'none' : 'flex';
-            document.querySelectorAll('.bottom-nav button').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.nav-links-container button').forEach(btn => btn.classList.remove('active'));
             const activeBtn = document.getElementById(`nav-${page}`);
             if (activeBtn) activeBtn.classList.add('active');
 
@@ -262,7 +262,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 const listHtml = filteredInventory.map(item => {
                     const sellP = parseFloat(item.sellingPrice || item.price || 0);
-                    const rackR = parseFloat(item.rackRate || 0);
                     let coverImage = item.image || "baku_night.jpg"; 
                     let badgeClass = item.category === 'Hotel' ? 'badge-hotel' : (item.category === 'Transport' ? 'badge-transport' : 'badge-activity');
                     const verifiedBadge = item.is_verified ? `<i class="fas fa-shield-alt verified-icon" title="Verified Partner" style="color:#27ae60;"></i>` : '';
@@ -271,6 +270,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (item.category === 'Hotel' && item.region) {
                         const starString = item.stars === 'Unrated' ? t('unrated') : '⭐'.repeat(parseInt(item.stars) || 0);
                         hotelMeta = `<div style="font-size:0.85rem; color:#f39c12; margin-top:4px; font-weight:600;">${starString} <span style="color:#888; font-weight:400;">| ${t(item.region?.toLowerCase()) || item.region}</span></div>`;
+                    }
+
+                    let actionButtons = '';
+                    if (window.currentUserRole === 'admin' || window.currentUserRole === 'partner') {
+                        actionButtons = `
+                            <button onclick="window.manageDates('${item.id}')" class="btn-action btn-edit" title="Availability Calendar" style="flex:1;"><i class="far fa-calendar-alt"></i></button>
+                            <button onclick="window.editItem('${item.id}')" class="btn-action btn-edit" style="flex:1;"><i class="fas fa-pen"></i></button>
+                            <button onclick="window.deleteItem('${item.id}')" class="btn-action btn-delete" style="flex:1;"><i class="fas fa-trash"></i></button>
+                        `;
                     }
 
                     return `
@@ -287,13 +295,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <h3 style="margin:4px 0 0 0;">${item.name}</h3>
                             ${hotelMeta}
                             <div style="margin-top:10px;"></div>
+                            ${(window.currentUserRole === 'admin' || window.currentUserRole === 'partner') ? `
                             <div style="background:#f8f9fa; padding:10px 12px; border-radius:8px; margin-top:auto; font-size:0.85rem; display:flex; justify-content:space-between; border: 1px solid #e1e4e8;">
-                                <span style="color:#555;">${t('net_label')}: <b style="color:#e74c3c;">${item.netCost || 0}</b></span>
-                                <span style="font-weight:700; color:#27ae60;">${t('margin_label')}: ${item.markup || 0}%</span>
-                            </div>
+                                <span style="color:#555;">${t('net_label') || 'Net'}: <b style="color:#e74c3c;">${item.netCost || 0}</b></span>
+                                <span style="font-weight:700; color:#27ae60;">${t('margin_label') || 'Margin'}: ${item.markup || 0}%</span>
+                            </div>` : ''}
                             <div style="display:flex; gap:10px; margin-top:15px;">
-                                <button onclick="window.editItem('${item.id}')" class="btn-action btn-edit" style="flex:1;"><i class="fas fa-pen"></i></button>
-                                <button onclick="window.deleteItem('${item.id}')" class="btn-action btn-delete" style="flex:1;"><i class="fas fa-trash"></i></button>
+                                ${actionButtons}
                             </div>
                         </div>
                     </div>`
@@ -340,7 +348,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         ${window.currentUserRole === 'admin' ? `
                         <div style="margin-top: 40px; text-align: center; border-top: 1px dashed #ccc; padding-top: 20px;">
                             <button id="seed-btn" class="btn-primary" style="margin: 0 auto; background: #34495e; padding: 15px 30px;" onclick="window.seedDatabase()">
-                                <i class="fas fa-database"></i> Авто-заполнение базы отелей (Габала, Гусар, Шеки, Лянкяран)
+                                <i class="fas fa-database"></i> Авто-заполнение базы
                             </button>
                         </div>` : ''}
                     </div>`;
@@ -376,16 +384,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
 
                     return `
-                    <div class="card" style="padding:15px; display:flex; justify-content:space-between; align-items:center; gap:10px; border-left: 4px solid var(--primary);">
+                    <div class="card" style="padding:15px; display:flex; justify-content:space-between; align-items:center; gap:10px; border-left: 4px solid var(--primary); cursor:pointer; transition:0.2s;" onclick="window.viewItemDetails('${item.id}')" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
                         <div>
                             <div style="font-size:0.75rem; color:#888; font-weight:700;">${t(item.category?.toLowerCase()) || item.category} | ${item.supplierName || ''}</div>
                             <h4 style="margin:4px 0;">${item.name}</h4>
                             ${hotelMeta}
-                            <div style="color:var(--dark); font-weight:800; margin-top:4px;">${item.currency==='AZN'?'₼':'$'}${sellP}</div>
+                            <div style="color:var(--dark); font-weight:800; margin-top:4px;">${item.currency==='AZN'?'₼':'$'}${sellP} / day</div>
                         </div>
-                        ${window.currentUserRole === 'buyer' || window.currentUserRole === 'admin' ? `
-                            <button onclick="window.addToCart('${item.id}')" class="btn-primary" style="padding:10px 15px; border-radius:8px; font-size:0.85rem;"><i class="fas fa-plus"></i></button>
-                        ` : ''}
+                        <button class="btn-primary" style="padding:10px 15px; border-radius:8px; font-size:0.85rem;"><i class="fas fa-search"></i> Select</button>
                     </div>`;
                 }).join('');
 
@@ -397,7 +403,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #eee;">
                         <div style="flex:1;">
                             <div style="font-weight:600; font-size:0.9rem;">${cartItem.name}</div>
-                            <div style="font-size:0.8rem; color:#888;">${cartItem.currency==='AZN'?'₼':'$'}${cartItem.sellingPrice || cartItem.price || 0}</div>
+                            <div style="font-size:0.8rem; color:#888;"><i class="far fa-calendar-alt"></i> ${cartItem.selectedDate} • ${cartItem.currency==='AZN'?'₼':'$'}${cartItem.sellingPrice || cartItem.price || 0}</div>
                         </div>
                         <button onclick="window.removeFromCart('${cartItem.cartId}')" class="btn-action btn-delete" style="padding:6px 10px; border-radius:6px;"><i class="fas fa-times"></i></button>
                     </div>`;
@@ -406,7 +412,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 content.innerHTML = `
                     <div style="padding:15px; display:flex; flex-wrap:wrap; gap:25px; padding-bottom:100px;">
                         <div style="flex: 1 1 55%; min-width:300px;">
-                            <h2 style="margin-bottom:15px;" data-i18n="nav_bookings">Bookings</h2>
+                            <h2 style="margin-bottom:15px;" data-i18n="nav_bookings">Tour Builder</h2>
                             <div class="filter-bar" style="margin-bottom:15px;">
                                 <button class="filter-btn ${window.bookingFilter === 'All' ? 'active' : ''}" onclick="window.setBookingFilter('All')">All</button>
                                 <button class="filter-btn ${window.bookingFilter === 'Hotel' ? 'active' : ''}" onclick="window.setBookingFilter('Hotel')">${t('hotel')}</button>
@@ -423,7 +429,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                                         <option value="Qusar" ${window.regionFilter === 'Qusar' ? 'selected' : ''}>${t('qusar') || 'Qusar'}</option>
                                         <option value="Sheki" ${window.regionFilter === 'Sheki' ? 'selected' : ''}>${t('sheki') || 'Sheki'}</option>
                                         <option value="Lankaran" ${window.regionFilter === 'Lankaran' ? 'selected' : ''}>${t('lankaran') || 'Lankaran'}</option>
-                                        <option value="Other" ${window.regionFilter === 'Other' ? 'selected' : ''}>${t('other') || 'Other'}</option>
                                     </select>
                                 </div>
                                 <div style="flex: 1;">
@@ -432,7 +437,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                                         <option value="3" ${window.starsFilter === '3' ? 'selected' : ''}>3 ⭐</option>
                                         <option value="4" ${window.starsFilter === '4' ? 'selected' : ''}>4 ⭐</option>
                                         <option value="5" ${window.starsFilter === '5' ? 'selected' : ''}>5 ⭐</option>
-                                        <option value="Unrated" ${window.starsFilter === 'Unrated' ? 'selected' : ''}>${t('unrated') || 'Unrated'}</option>
                                     </select>
                                 </div>
                             </div>
@@ -481,7 +485,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 <p style="margin: 8px 0 4px 0; font-size: 0.9rem; color: #555;"><i class="fas fa-user" style="color:var(--primary); width:20px;"></i> ${p.contact || 'N/A'}</p>
                                 <p style="margin: 0; font-size: 0.9rem; color: #555;"><i class="fas fa-phone" style="color:var(--primary); width:20px;"></i> ${p.phone || 'N/A'}</p>
                             </div>
-                            ${p.documentUrl ? `<a href="${p.documentUrl}" target="_blank" style="color:var(--dark); font-size:1.8rem; transition:0.2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--dark)'"><i class="fas fa-file-pdf"></i></a>` : ''}
                         </div>
                         <div style="display:flex; gap:10px; margin-top:20px; border-top: 1px solid #f0f2f5; padding-top: 15px;">
                             <button onclick="window.deletePartner('${p.id}')" class="btn-action btn-delete" style="flex:1;"><i class="fas fa-trash"></i> Удалить</button>
@@ -496,77 +499,134 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>`;
             }
             
-            // FIX [02.04.2026]: Переверстанный Экстранет-Профиль (Extranet Style UI)
+            // FIX [04.04.2026]: Улучшенный профиль Покупателя (Простой) vs Партнер (Вкладки)
             else if (page === 'profile') {
                 const profile = window.currentUserProfile || {};
                 
-                let verifiedHtml = '';
-                if (profile.is_verified) {
-                    verifiedHtml = `<span style="color:#27ae60; font-size:0.9rem; margin-left:10px; display:inline-flex; align-items:center; gap:5px;"><i class="fas fa-check-circle"></i> <strong data-i18n="verified_status">Təsdiqlənmiş Tərəfdaş</strong></span>`;
-                }
-
-                content.innerHTML = `
-                    <div style="padding:30px 20px; max-width: 1000px; margin: 0 auto; padding-bottom: 100px;">
-                        
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 25px;">
-                            <h2 style="margin:0; color:#1a1a1a; font-family:'Montserrat', sans-serif;" data-i18n="profile_settings">Profile Settings</h2>
-                            <button class="btn-action btn-delete" onclick="window.logout()" style="padding:10px 20px; font-weight:700; background:#fff0f0;" data-i18n="logout">Logout</button>
-                        </div>
-                        
-                        <div style="display: flex; flex-wrap: wrap; gap: 25px;">
-                            <div class="card" style="flex: 1 1 350px; padding: 30px; border-radius: 20px; margin:0;">
-                                <h3 style="margin-top:0; border-bottom: 2px solid #f0f2f5; padding-bottom: 10px;" data-i18n="company_details">Company Details</h3>
-                                
-                                <label class="input-label" style="display:flex; align-items:center;" data-i18n="company_name">Company Name ${verifiedHtml}</label>
-                                <input type="text" value="${profile.companyName || profile.role?.toUpperCase() || ''}" disabled style="background:#f0f2f5; color:#777; font-weight:600; cursor:not-allowed;">
-                                
-                                <label class="input-label" data-i18n="legal_address">Legal Address</label>
-                                <input type="text" id="prof-address" value="${profile.legalAddress || ''}" placeholder="Baku, Nizami str. 10">
-
-                                <label class="input-label" data-i18n="tax_id">VÖEN (Tax ID)</label>
-                                <input type="text" id="prof-voen" value="${profile.voen || ''}" placeholder="1234567891">
-
-                                <label class="input-label" data-i18n="bank_details">Bank Details (IBAN)</label>
-                                <input type="text" id="prof-iban" value="${profile.iban || ''}" placeholder="AZ12 NABZ 0000 0000 ...">
-
-                                <button class="save-btn" onclick="window.saveProfile()" style="margin-top: 25px;">
-                                    <i class="fas fa-save"></i> <span data-i18n="save_details">Save Details</span>
-                                </button>
-                            </div>
-
-                            <div class="card" style="flex: 1 1 350px; padding: 30px; border-radius: 20px; margin:0;">
-                                <h3 style="margin-top:0; border-bottom: 2px solid #f0f2f5; padding-bottom: 10px;" data-i18n="media_content">Media & Content</h3>
-                                
-                                <label class="input-label" data-i18n="hotel_description">Hotel Description</label>
-                                <textarea id="prof-desc" style="height: 120px;" placeholder="..."> ${profile.description || ''}</textarea>
-
-                                <label class="input-label" style="margin-top: 20px;" data-i18n="upload_photos">Upload Photos (Max: 5)</label>
-                                <div style="border: 2px dashed #00afb9; border-radius: 12px; padding: 30px; text-align: center; background: rgba(0, 175, 185, 0.05); position: relative; cursor: pointer; transition: 0.2s;" onmouseover="this.style.background='rgba(0, 175, 185, 0.1)'" onmouseout="this.style.background='rgba(0, 175, 185, 0.05)'">
-                                    <i class="fas fa-camera" style="font-size: 2.5rem; color: #00afb9; margin-bottom: 10px;"></i>
-                                    <p style="margin: 0; font-size: 0.9rem; color: #555; font-weight: 600;" data-i18n="upload_photos">Drag & Drop or Click to upload</p>
-                                    <input type="file" id="prof-photos" multiple accept="image/*" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;">
-                                </div>
-                                <div id="prof-photos-preview" style="display:flex; gap:10px; margin-top:15px; overflow-x:auto;"></div>
-                            </div>
+                if (window.currentUserRole === 'buyer') {
+                    content.innerHTML = `
+                    <div style="padding:40px 20px; max-width: 600px; margin: 0 auto;">
+                        <h2 style="margin:0 0 20px 0; color:#1a1a1a; font-family:'Montserrat', sans-serif; text-align:center;">Buyer Profile</h2>
+                        <div class="card" style="padding:40px; border-radius:24px; text-align:center;">
+                            <i class="fas fa-user-circle" style="font-size: 4rem; color: #ccc; margin-bottom: 15px;"></i>
+                            <h3>${profile.companyName || 'Tour Operator'}</h3>
+                            <p style="color:#666;">Access Level: Authorized Buyer</p>
+                            <button class="btn-action btn-delete" onclick="window.logout()" style="width:100%; padding:16px; font-weight:700; background:#fff0f0; margin-top:20px;" data-i18n="logout">Logout</button>
                         </div>
                     </div>`;
+                } else {
+                    // Extranet Tabs Profile for Partners and Admins
+                    const pType = profile.partnerType || 'Hotel';
+                    const isDriver = pType === 'Transport';
+                    const badgeTitle = isDriver ? 'Verified Driver' : 'Verified Partner';
 
-                setTimeout(() => {
-                    const photoInput = document.getElementById('prof-photos');
-                    const preview = document.getElementById('prof-photos-preview');
-                    if(photoInput) {
-                        photoInput.addEventListener('change', (e) => {
-                            const files = e.target.files;
-                            if(files.length > 5) {
-                                alert("Maximum 5 photos allowed!");
-                                photoInput.value = "";
-                                preview.innerHTML = "";
-                                return;
-                            }
-                            preview.innerHTML = `<span style="font-size:0.85rem; color:#27ae60; font-weight:600;"><i class="fas fa-check"></i> ${files.length} photo(s) selected</span>`;
-                        });
-                    }
-                }, 100);
+                    let verifiedHtml = profile.is_verified 
+                        ? `<span style="color:#27ae60; font-size:0.9rem; margin-left:10px; display:inline-flex; align-items:center; gap:5px;"><i class="fas fa-shield-alt"></i> <strong>${badgeTitle}</strong></span>` 
+                        : '';
+
+                    const amAir = profile.amenities?.air_conditioning ? 'checked' : '';
+                    const amWifi = profile.amenities?.free_wifi ? 'checked' : '';
+                    const amBath = profile.amenities?.private_bathroom ? 'checked' : '';
+                    const amBalc = profile.amenities?.balcony ? 'checked' : '';
+                    const amTv = profile.amenities?.tv ? 'checked' : '';
+                    const amMini = profile.amenities?.minibar ? 'checked' : '';
+
+                    content.innerHTML = `
+                        <div style="padding:30px 20px; max-width: 800px; margin: 0 auto; padding-bottom: 100px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+                                <h2 style="margin:0; color:#1a1a1a; font-family:'Montserrat', sans-serif;">Extranet Settings</h2>
+                            </div>
+
+                            <div class="profile-tabs">
+                                <button class="tab-btn active" id="tab-btn-1" onclick="window.switchProfileTab(1)">Terms & Details</button>
+                                <button class="tab-btn" id="tab-btn-2" onclick="window.switchProfileTab(2)">Amenities</button>
+                                <button class="tab-btn" id="tab-btn-3" onclick="window.switchProfileTab(3)">Media & Content</button>
+                            </div>
+                            
+                            <div class="card" style="padding: 30px; border-radius: 16px; margin:0;">
+                                
+                                <div id="tab-1" class="tab-content active">
+                                    <label class="input-label" style="display:flex; align-items:center;">Company Name ${verifiedHtml}</label>
+                                    <input type="text" value="${profile.companyName || profile.role?.toUpperCase() || ''}" disabled style="background:#f0f2f5; color:#777; font-weight:600; cursor:not-allowed;">
+                                    
+                                    <label class="input-label">Business Type</label>
+                                    <select id="prof-type" onchange="window.saveProfileType(this.value)">
+                                        <option value="Hotel" ${pType === 'Hotel' ? 'selected' : ''}>Hotel / Accommodation</option>
+                                        <option value="Transport" ${pType === 'Transport' ? 'selected' : ''}>Transport / Driver</option>
+                                        <option value="Activity" ${pType === 'Activity' ? 'selected' : ''}>Tour Guide / Activity</option>
+                                    </select>
+
+                                    <label class="input-label">Cancellation Policy</label>
+                                    <select id="prof-cancel-policy">
+                                        <option value="Flexible" ${profile.cancelPolicy === 'Flexible' ? 'selected' : ''}>Flexible (Free up to 24h)</option>
+                                        <option value="Standard" ${profile.cancelPolicy === 'Standard' ? 'selected' : ''}>Standard (Free up to 3 days)</option>
+                                        <option value="Strict" ${profile.cancelPolicy === 'Strict' ? 'selected' : ''}>Strict (100% Penalty)</option>
+                                    </select>
+
+                                    <label class="input-label">Manager Contact (Name & Phone)</label>
+                                    <input type="text" id="prof-manager" value="${profile.managerContact || ''}" placeholder="John Doe, +994 50 000 00 00">
+
+                                    <div style="display:flex; gap:15px; margin-top:10px;">
+                                        <div style="flex:1;"><label class="input-label">VÖEN</label><input type="text" id="prof-voen" value="${profile.voen || ''}"></div>
+                                        <div style="flex:1;"><label class="input-label">IBAN</label><input type="text" id="prof-iban" value="${profile.iban || ''}"></div>
+                                    </div>
+                                </div>
+
+                                <div id="tab-2" class="tab-content">
+                                    <label class="input-label">Room / Car Size</label>
+                                    <input type="text" id="prof-room-size" value="${profile.roomSize || ''}" placeholder="e.g. 25 sq.m or 4 seats">
+                                    
+                                    <h4 style="margin-top: 25px; margin-bottom:10px; color:#333;">Facilities</h4>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                        <label class="checkbox-label"><input type="checkbox" id="am-air" ${amAir}> ❄️ Air Conditioning</label>
+                                        <label class="checkbox-label"><input type="checkbox" id="am-wifi" ${amWifi}> 📶 Free WiFi</label>
+                                        <label class="checkbox-label"><input type="checkbox" id="am-bath" ${amBath}> 🛁 Private Bathroom</label>
+                                        <label class="checkbox-label"><input type="checkbox" id="am-balc" ${amBalc}> 🌇 Balcony</label>
+                                        <label class="checkbox-label"><input type="checkbox" id="am-tv" ${amTv}> 📺 TV</label>
+                                        <label class="checkbox-label"><input type="checkbox" id="am-mini" ${amMini}> 🍷 Mini-bar</label>
+                                    </div>
+                                </div>
+
+                                <div id="tab-3" class="tab-content">
+                                    <label class="input-label" style="margin-top: 0;">Upload Photos (Max: 5)</label>
+                                    <div style="border: 2px dashed #00afb9; border-radius: 12px; padding: 30px; text-align: center; background: rgba(0, 175, 185, 0.05); position: relative; cursor: pointer;">
+                                        <i class="fas fa-camera" style="font-size: 2.5rem; color: #00afb9; margin-bottom: 10px;"></i>
+                                        <p style="margin: 0; font-size: 0.9rem; color: #555; font-weight: 600;">Drag & Drop or Click to upload</p>
+                                        <input type="file" id="prof-photos" multiple accept="image/*" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;">
+                                    </div>
+                                    <div id="prof-photos-preview" style="display:flex; gap:10px; margin-top:10px; margin-bottom:20px; min-height:20px;"></div>
+                                    
+                                    <h4 style="margin-bottom:10px; color:#333;">Multilingual Description</h4>
+                                    <label class="input-label">English Description</label>
+                                    <textarea id="prof-desc-en" style="height: 80px;" placeholder="English...">${profile.description_en || ''}</textarea>
+                                    
+                                    <label class="input-label">Russian Description</label>
+                                    <textarea id="prof-desc-ru" style="height: 80px;" placeholder="Русский...">${profile.description_ru || ''}</textarea>
+                                    
+                                    <label class="input-label">Azerbaijani Description</label>
+                                    <textarea id="prof-desc-az" style="height: 80px;" placeholder="Azərbaycanca...">${profile.description_az || ''}</textarea>
+                                </div>
+
+                                <button class="save-btn" onclick="window.saveProfile()" style="margin-top: 30px;">
+                                    <i class="fas fa-save"></i> Save Extranet Details
+                                </button>
+                            </div>
+                        </div>`;
+
+                    setTimeout(() => {
+                        const photoInput = document.getElementById('prof-photos');
+                        const preview = document.getElementById('prof-photos-preview');
+                        if(photoInput) {
+                            photoInput.addEventListener('change', (e) => {
+                                if(e.target.files.length > 5) {
+                                    alert("Maximum 5 photos allowed!");
+                                    photoInput.value = ""; preview.innerHTML = ""; return;
+                                }
+                                preview.innerHTML = `<span style="font-size:0.85rem; color:#27ae60; font-weight:600;"><i class="fas fa-check"></i> ${e.target.files.length} photo(s) selected</span>`;
+                            });
+                        }
+                    }, 100);
+                }
             }
             else if (page === 'login') {
                 content.innerHTML = `
@@ -587,12 +647,41 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (e) { console.error("Critical Render Error:", e); }
     }
 
-    // Сохранение Профиля (включая новое поле description)
+    window.switchProfileTab = (tabId) => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.getElementById(`tab-btn-${tabId}`).classList.add('active');
+        document.getElementById(`tab-${tabId}`).classList.add('active');
+    };
+
+    window.saveProfileType = async (type) => {
+        try {
+            await update(ref(db, `users/${window.currentUserUid}`), { partnerType: type });
+            if(window.currentUserProfile) window.currentUserProfile.partnerType = type;
+            window.render('profile');
+        } catch(e) {}
+    };
+
     window.saveProfile = async () => {
         const address = document.getElementById('prof-address').value.trim();
         const voen = document.getElementById('prof-voen').value.trim();
         const iban = document.getElementById('prof-iban').value.trim();
-        const desc = document.getElementById('prof-desc') ? document.getElementById('prof-desc').value.trim() : '';
+        const cancelPolicy = document.getElementById('prof-cancel-policy') ? document.getElementById('prof-cancel-policy').value : 'Standard';
+        const manager = document.getElementById('prof-manager') ? document.getElementById('prof-manager').value.trim() : '';
+        const roomSize = document.getElementById('prof-room-size') ? document.getElementById('prof-room-size').value.trim() : '';
+        
+        const descEn = document.getElementById('prof-desc-en') ? document.getElementById('prof-desc-en').value.trim() : '';
+        const descRu = document.getElementById('prof-desc-ru') ? document.getElementById('prof-desc-ru').value.trim() : '';
+        const descAz = document.getElementById('prof-desc-az') ? document.getElementById('prof-desc-az').value.trim() : '';
+        
+        const amenitiesObj = {
+            air_conditioning: document.getElementById('am-air')?.checked || false,
+            free_wifi: document.getElementById('am-wifi')?.checked || false,
+            private_bathroom: document.getElementById('am-bath')?.checked || false,
+            balcony: document.getElementById('am-balc')?.checked || false,
+            tv: document.getElementById('am-tv')?.checked || false,
+            minibar: document.getElementById('am-mini')?.checked || false,
+        };
         
         const saveBtn = document.querySelector('#app-content .save-btn');
         const origHtml = saveBtn.innerHTML;
@@ -601,19 +690,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         try {
             await update(ref(db, `users/${window.currentUserUid}`), {
-                legalAddress: address,
-                voen: voen,
-                iban: iban,
-                description: desc
+                legalAddress: address, voen: voen, iban: iban,
+                cancelPolicy: cancelPolicy, managerContact: manager,
+                roomSize: roomSize, amenities: amenitiesObj,
+                description_en: descEn, description_ru: descRu, description_az: descAz
             });
             
-            alert(t('booking_success') || "Məlumatlar uğurla yadda saxlanıldı!");
+            alert("Məlumatlar uğurla yadda saxlanıldı! (Saved successfully)");
             
             if(window.currentUserProfile) {
                 window.currentUserProfile.legalAddress = address;
                 window.currentUserProfile.voen = voen;
                 window.currentUserProfile.iban = iban;
-                window.currentUserProfile.description = desc;
+                window.currentUserProfile.cancelPolicy = cancelPolicy;
+                window.currentUserProfile.managerContact = manager;
+                window.currentUserProfile.roomSize = roomSize;
+                window.currentUserProfile.amenities = amenitiesObj;
+                window.currentUserProfile.description_en = descEn;
+                window.currentUserProfile.description_ru = descRu;
+                window.currentUserProfile.description_az = descAz;
             }
         } catch(e) {
             alert("Error: " + e.message);
@@ -623,118 +718,362 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-    window.addToCart = (id) => {
+    window.generateMonthHTML = function(year, month) {
+        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const firstDay = new Date(year, month, 1).getDay(); 
+        const startOffset = firstDay === 0 ? 6 : firstDay - 1; 
+
+        let html = `
+        <div class="calendar-month">
+            <div class="calendar-month-header">
+                <h4>${monthNames[month]} ${year}</h4>
+                <div class="calendar-bulk-actions">
+                    <button type="button" onclick="window.bulkSelectMonth(${year}, ${month}, true)">Select All</button>
+                    <button type="button" onclick="window.bulkSelectMonth(${year}, ${month}, false)">Clear</button>
+                </div>
+            </div>
+            <div class="calendar-grid">
+                <div class="cal-day-name">Mon</div><div class="cal-day-name">Tue</div><div class="cal-day-name">Wed</div>
+                <div class="cal-day-name">Thu</div><div class="cal-day-name">Fri</div><div class="cal-day-name">Sat</div><div class="cal-day-name">Sun</div>`;
+
+        for (let i = 0; i < startOffset; i++) {
+            html += `<div class="cal-cell empty"></div>`;
+        }
+
+        const today = new Date();
+        today.setHours(0,0,0,0);
+
+        for (let d = 1; d <= daysInMonth; d++) {
+            const currentD = new Date(year, month, d);
+            const dateStr = `${year}-${String(month+1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const isPast = currentD < today;
+            const isAvail = window.currentAvailableDates.includes(dateStr);
+
+            if (isPast) {
+                 html += `<div class="cal-cell past"><span class="cal-date-num">${d}</span></div>`;
+            } else {
+                 let cellClass = isAvail ? 'cal-cell available' : 'cal-cell blocked';
+                 let icon = isAvail ? '<i class="fas fa-check"></i>' : '<i class="fas fa-times"></i>';
+                 html += `<div id="cal-cell-${dateStr}" class="${cellClass}" onclick="window.toggleDateExtranet('${dateStr}')">
+                    <span class="cal-date-num">${d}</span>
+                    <span class="cal-status-icon" id="cal-icon-${dateStr}">${icon}</span>
+                 </div>`;
+            }
+        }
+        html += `</div></div>`;
+        return html;
+    };
+
+    window.toggleDateExtranet = function(dateStr) {
+        const idx = window.currentAvailableDates.indexOf(dateStr);
+        const cell = document.getElementById(`cal-cell-${dateStr}`);
+        const icon = document.getElementById(`cal-icon-${dateStr}`);
+
+        if(idx > -1) {
+            window.currentAvailableDates.splice(idx, 1);
+            cell.className = 'cal-cell blocked';
+            icon.innerHTML = '<i class="fas fa-times"></i>';
+        } else {
+            window.currentAvailableDates.push(dateStr);
+            cell.className = 'cal-cell available';
+            icon.innerHTML = '<i class="fas fa-check"></i>';
+        }
+    };
+
+    window.bulkSelectMonth = function(year, month, isSelect) {
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const today = new Date();
+        today.setHours(0,0,0,0);
+
+        for (let d = 1; d <= daysInMonth; d++) {
+            const currentD = new Date(year, month, d);
+            if (currentD < today) continue;
+            const dateStr = `${year}-${String(month+1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const idx = window.currentAvailableDates.indexOf(dateStr);
+            const cell = document.getElementById(`cal-cell-${dateStr}`);
+            const icon = document.getElementById(`cal-icon-${dateStr}`);
+
+            if(isSelect && idx === -1) {
+                window.currentAvailableDates.push(dateStr);
+                if(cell) cell.className = 'cal-cell available';
+                if(icon) icon.innerHTML = '<i class="fas fa-check"></i>';
+            } else if(!isSelect && idx > -1) {
+                window.currentAvailableDates.splice(idx, 1);
+                if(cell) cell.className = 'cal-cell blocked';
+                if(icon) icon.innerHTML = '<i class="fas fa-times"></i>';
+            }
+        }
+    };
+
+    window.manageDates = function(id) {
         const item = inventory.find(i => i.id === id);
-        if (item) {
-            window.currentCart.push({ ...item, cartId: Date.now() + '_' + Math.random().toString(36).substr(2, 9) });
-            window.render('bookings');
-        }
-    };
-    window.removeFromCart = (cartId) => {
-        window.currentCart = window.currentCart.filter(i => i.cartId !== cartId);
-        window.render('bookings');
-    };
+        if(!item) return;
+        window.currentEditingItemId = id;
+        window.currentAvailableDates = item.availableDates ? [...item.availableDates] : [];
+        
+        const today = new Date();
+        const y1 = today.getFullYear();
+        const m1 = today.getMonth();
+        let y2 = y1; let m2 = m1 + 1;
+        if(m2 > 11) { m2 = 0; y2++; }
 
-    window.processBooking = async () => {
-        if(window.currentCart.length === 0) return alert(t('empty_cart') || "Package is empty!");
-        const btn = document.getElementById('checkout-btn');
-        const origText = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-        btn.disabled = true;
-
-        try {
-            const totalSelling = window.currentCart.reduce((sum, item) => sum + parseFloat(item.sellingPrice || item.price || 0), 0);
-            const totalNet = window.currentCart.reduce((sum, item) => sum + parseFloat(item.netCost || 0), 0);
-            const orderId = 'ORD-' + Date.now();
-            
-            const orderData = {
-                orderId: orderId,
-                items: window.currentCart, 
-                totalSellingPrice: totalSelling, 
-                totalNetPrice: totalNet,
-                totalMargin: totalSelling - totalNet, 
-                status: 'pending', 
-                timestamp: Date.now(),
-                createdAt: Date.now(),
-                buyer_uid: window.currentUserUid
-            };
-
-            await push(ref(db, 'bookings'), orderData);
-            window.showInvoiceModal(orderData);
-            
-        } catch(e) {
-            console.error("Booking Error:", e);
-            alert("Error: " + e.message);
-            btn.innerHTML = origText; btn.disabled = false;
-        }
-    };
-
-    window.showInvoiceModal = function(orderData) {
-        const existingModal = document.getElementById('invoice-modal');
-        if (existingModal) existingModal.remove();
-
-        const itemsHtml = orderData.items.map(item => `
-            <tr style="border-bottom: 1px solid #eee;">
-                <td style="padding: 12px 10px; font-family: 'Inter', sans-serif;">${item.name}</td>
-                <td style="padding: 12px 10px; font-family: 'Inter', sans-serif; color: #666;">${t(item.category?.toLowerCase()) || item.category}</td>
-                <td style="padding: 12px 10px; text-align: right; font-weight: 600;">${item.currency === 'AZN' ? '₼' : '$'} ${item.sellingPrice || item.price}</td>
-            </tr>
-        `).join('');
-
-        const dateStr = new Date(orderData.createdAt).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const html1 = window.generateMonthHTML(y1, m1);
+        const html2 = window.generateMonthHTML(y2, m2);
 
         const modalHtml = `
-        <div class="modal-overlay" id="invoice-modal" style="z-index: 5000;">
-            <div class="modal-content" style="max-width: 800px; padding: 0;">
-                <div id="invoice-print-area">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; border-bottom: 2px solid var(--primary); padding-bottom: 20px;">
-                        <div>
-                            <h1 style="margin: 0; color: var(--dark); font-family: 'Montserrat', sans-serif;">Caspian Travel Routes</h1>
-                            <p style="color: #666; margin: 5px 0 0 0; font-weight: 600;">Official B2B Invoice</p>
-                        </div>
-                        <div style="text-align: right;">
-                            <h3 style="margin: 0; color: #333; font-family: 'Montserrat', sans-serif;">INVOICE</h3>
-                            <p style="margin: 5px 0 0 0; color: #666;"><strong>Order ID:</strong> ${orderData.orderId}</p>
-                            <p style="margin: 5px 0 0 0; color: #666;"><strong>Date:</strong> ${dateStr}</p>
-                        </div>
-                    </div>
-                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
-                        <thead>
-                            <tr style="background: #f8f9fa; text-align: left;">
-                                <th style="padding: 12px 10px; border-bottom: 2px solid #ddd; color: #555;">Service Details</th>
-                                <th style="padding: 12px 10px; border-bottom: 2px solid #ddd; color: #555;">Type</th>
-                                <th style="padding: 12px 10px; border-bottom: 2px solid #ddd; text-align: right; color: #555;">Price</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${itemsHtml}
-                        </tbody>
-                    </table>
-                    <div style="display: flex; justify-content: flex-end;">
-                        <div style="min-width: 250px; background: #f8f9fa; padding: 20px; border-radius: 12px;">
-                            <div style="display: flex; justify-content: space-between; font-size: 1.2rem; font-weight: 800; color: var(--dark);">
-                                <span>TOTAL:</span>
-                                <span>₼ ${orderData.totalSellingPrice.toFixed(2)}</span>
-                            </div>
-                        </div>
-                    </div>
+        <div class="modal-overlay" id="calendar-modal">
+            <div class="modal-content" style="max-width:700px; max-height: 85vh !important; overflow-y: auto;">
+                <div class="modal-header">
+                    <h2>Availability: ${item.name}</h2>
+                    <button type="button" class="modal-close" onclick="document.getElementById('calendar-modal').remove()"><i class="fas fa-times"></i></button>
                 </div>
-                <div class="modal-footer no-print" style="justify-content: flex-end; background: #f0f2f5; border-radius: 0 0 20px 20px;">
-                    <button type="button" class="btn-action btn-edit" style="padding: 12px 20px;" onclick="window.closeInvoiceAndClear()">Close</button>
-                    <button type="button" class="btn-primary" style="padding: 12px 20px;" onclick="window.print()"><i class="fas fa-print"></i> Print / Save as PDF</button>
+                <div class="modal-body" style="background: #fff;">
+                    <p style="color:#666; font-size:0.9rem; margin-bottom: 20px;">Manage your availability. Green means dates are open for booking.</p>
+                    ${html1}
+                    ${html2}
+                </div>
+                <div class="modal-footer">
+                    <button class="save-btn" onclick="window.saveDates()"><i class="fas fa-save"></i> Save</button>
                 </div>
             </div>
         </div>`;
-
         document.body.insertAdjacentHTML('beforeend', modalHtml);
-        setTimeout(() => document.getElementById('invoice-modal').classList.add('active'), 10);
+        setTimeout(() => document.getElementById('calendar-modal').classList.add('active'), 10);
     };
 
-    window.closeInvoiceAndClear = () => {
-        const modal = document.getElementById('invoice-modal');
-        if (modal) modal.remove();
-        window.currentCart = [];
-        alert(t('booking_success') || "Sifariş uğurla yaradıldı!");
+    window.saveDates = async function() {
+        if(!window.currentEditingItemId) return;
+        const btn = document.querySelector('#calendar-modal .save-btn');
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        try {
+            await update(ref(db, `inventory/${window.currentEditingItemId}`), {
+                availableDates: window.currentAvailableDates
+            });
+            document.getElementById('calendar-modal').remove();
+        } catch(e) {
+            alert("Error: " + e.message);
+            btn.innerHTML = '<i class="fas fa-save"></i> Save';
+        }
+    };
+
+    // FIX [04.04.2026]: Booking.com Modal + Multilingual Descriptions
+    window.viewItemDetails = function(id) {
+        const item = inventory.find(i => i.id === id);
+        if(!item) return;
+        window.selectedDates = []; 
+        window.selectedItemToBook = item;
+        
+        const supplierUid = item.supplier_uid;
+        
+        if (supplierUid && supplierUid !== 'admin') {
+            const unsub = onValue(ref(db, `users/${supplierUid}`), (snapshot) => {
+                unsub(); 
+                const profile = snapshot.val() || {};
+                renderBookingModal(item, profile);
+            });
+        } else {
+            renderBookingModal(item, {
+                amenities: { air_conditioning: true, free_wifi: true, private_bathroom: true, tv: true },
+                cancelPolicy: 'Flexible', roomSize: '25',
+                description_en: "Luxurious accommodation with premium services."
+            });
+        }
+    };
+
+    function renderBookingModal(item, supplierProfile) {
+        const amenities = supplierProfile.amenities || {};
+        const cancelPolicy = supplierProfile.cancelPolicy || 'Standard';
+        
+        const currentLang = getCurrentLang() || 'en';
+        let localizedDesc = supplierProfile[`description_${currentLang}`];
+        if (!localizedDesc || localizedDesc.trim() === '') {
+            localizedDesc = supplierProfile.description_en || item.included || 'Detailed description will be provided by the partner soon.';
+        }
+        
+        let cancelHtml = '';
+        if (cancelPolicy === 'Flexible') cancelHtml = '<div style="color:#27ae60; font-weight:700; margin-bottom:10px;"><i class="fas fa-check"></i> Free Cancellation (Flexible)</div>';
+        else if (cancelPolicy === 'Standard') cancelHtml = '<div style="color:#f39c12; font-weight:700; margin-bottom:10px;"><i class="fas fa-info-circle"></i> Free Cancellation up to 3 days</div>';
+        else cancelHtml = '<div style="color:#e74c3c; font-weight:700; margin-bottom:10px;"><i class="fas fa-times-circle"></i> Strict Policy (100% Penalty)</div>';
+
+        let amenitiesHtml = '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:15px; font-weight:500; color:#444;">';
+        if(amenities.air_conditioning) amenitiesHtml += '<div>❄️ Air Conditioning</div>';
+        if(amenities.free_wifi) amenitiesHtml += '<div>📶 Free WiFi</div>';
+        if(amenities.private_bathroom) amenitiesHtml += '<div>🛁 Private Bathroom</div>';
+        if(amenities.balcony) amenitiesHtml += '<div>🌇 Balcony</div>';
+        if(amenities.tv) amenitiesHtml += '<div>📺 TV</div>';
+        if(amenities.minibar) amenitiesHtml += '<div>🍷 Mini-bar</div>';
+        amenitiesHtml += '</div>';
+
+        const roomSizeHtml = supplierProfile.roomSize ? `<div style="margin-top:15px; font-weight:600; color:#333;"><i class="fas fa-vector-square" style="color:var(--primary);"></i> Area: ${supplierProfile.roomSize}</div>` : '';
+
+        let datesHtml = '<div style="display:grid; grid-template-columns: repeat(7, 1fr); gap:6px; margin-top:10px;">';
+        let today = new Date();
+        let availCount = 0;
+        const availDates = item.availableDates || [];
+        
+        // Сетка для выбора дат (Компактный календарь Покупателя)
+        for(let i=0; i<35; i++) {
+            let d = new Date(today);
+            d.setDate(d.getDate() + i);
+            let dateStr = d.toISOString().split('T')[0];
+            if(availDates.includes(dateStr)) {
+                availCount++;
+                datesHtml += `<div id="buyer-date-${dateStr}" class="buyer-cal-day" onclick="window.selectBookingDate('${dateStr}')">${dateStr.substring(8,10)}<br><span style="font-size:0.65rem; color:#888; font-weight:400;">${dateStr.substring(5,7)}</span></div>`;
+            } else {
+                datesHtml += `<div class="buyer-cal-day blocked">${dateStr.substring(8,10)}</div>`;
+            }
+        }
+        datesHtml += '</div>';
+
+        const starString = item.stars && item.stars !== 'Unrated' ? '⭐'.repeat(parseInt(item.stars)) : '';
+        const basePrice = parseFloat(item.sellingPrice || item.price || 0).toFixed(2);
+
+        const modalHtml = `
+        <div class="modal-overlay" id="details-modal">
+            <div class="modal-content" style="max-width:900px; padding:0; overflow:hidden;">
+                <div style="position:relative; height:300px; background:#000;">
+                    <img src="${item.image || 'placeholder.jpg'}" loading="lazy" style="width:100%; height:100%; object-fit:cover; opacity:0.8;">
+                    <button type="button" onclick="document.getElementById('details-modal').remove()" style="position:absolute; top:15px; right:15px; background:rgba(0,0,0,0.5); color:white; border:none; border-radius:50%; width:40px; height:40px; font-size:1.2rem; cursor:pointer;"><i class="fas fa-times"></i></button>
+                    <div style="position:absolute; bottom:20px; left:20px; color:white;">
+                        <div style="font-size:0.85rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:5px;">${t(item.category?.toLowerCase()) || item.category}</div>
+                        <h2 style="margin:0; font-size:2.2rem; text-shadow:0 2px 4px rgba(0,0,0,0.5);">${item.name}</h2>
+                        ${starString ? `<div style="margin-top:5px; font-size:1.2rem;">${starString}</div>` : ''}
+                    </div>
+                </div>
+                
+                <div style="padding: 30px; display:flex; flex-wrap:wrap; gap:30px;">
+                    <div style="flex: 1 1 55%;">
+                        ${cancelHtml}
+                        <h3 style="margin-top:15px; color:var(--dark);">About this service</h3>
+                        <p style="color:#555; line-height:1.7; font-size:0.95rem; white-space: pre-line;">${localizedDesc}</p>
+                        ${roomSizeHtml}
+                        ${amenitiesHtml}
+                        
+                        <div style="margin-top:30px; background:#f8f9fa; padding:20px; border-radius:12px;">
+                            <h4 style="margin-top:0; color:#333;"><i class="far fa-calendar-alt" style="color:var(--primary);"></i> Select Dates (Range)</h4>
+                            <p style="font-size:0.85rem; color:#888; margin-bottom:10px;">Select your Check-in & Check-out dates.</p>
+                            ${datesHtml}
+                        </div>
+                    </div>
+                    
+                    <div style="flex: 1 1 35%;">
+                        <div style="border:1px solid #e1e4e8; padding:25px; border-radius:16px; position:sticky; top:20px; text-align:center;">
+                            <div style="color:#888; font-size:0.85rem; font-weight:700; text-transform:uppercase;">Booking Summary</div>
+                            <div id="modal-price-calc" style="margin:20px 0;">
+                                <div style="font-size:0.9rem; color:#666;">Price per day: ${basePrice} AZN</div>
+                                <div style="font-size:1.8rem; font-weight:800; color:var(--dark); opacity:0.5; margin-top:5px;">Total: 0.00 AZN</div>
+                            </div>
+                            <div id="selected-date-display" style="margin:20px 0; color:#e74c3c; font-weight:600; font-size:0.9rem;">Please select dates</div>
+                            <button class="save-btn" onclick="window.confirmAddToCart()" id="add-to-package-btn" disabled style="opacity:0.5; cursor:not-allowed; width:100%;">Add to Package</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        setTimeout(() => document.getElementById('details-modal').classList.add('active'), 10);
+    }
+
+    // FIX [04.04.2026]: Логика выделения нескольких дат и умножения цены
+    window.selectBookingDate = function(dateStr) {
+        const availDates = window.selectedItemToBook.availableDates || [];
+
+        if (window.selectedDates.length === 0 || window.selectedDates.length >= 2) {
+            window.selectedDates = [dateStr];
+        } else {
+            let d1 = new Date(window.selectedDates[0]);
+            let d2 = new Date(dateStr);
+            
+            if (d1 > d2) { const temp = d1; d1 = d2; d2 = temp; }
+
+            window.selectedDates = [];
+            let currentD = new Date(d1);
+            
+            while (currentD <= d2) {
+                let dStr = currentD.toISOString().split('T')[0];
+                if (availDates.includes(dStr)) {
+                    window.selectedDates.push(dStr);
+                }
+                currentD.setDate(currentD.getDate() + 1);
+            }
+        }
+
+        const btns = document.querySelectorAll('.buyer-cal-day');
+        btns.forEach(b => { 
+            if (!b.classList.contains('blocked')) {
+                b.className = 'buyer-cal-day'; 
+            }
+        });
+
+        if (window.selectedDates.length === 1) {
+            const btn = document.getElementById(`buyer-date-${window.selectedDates[0]}`);
+            if(btn) btn.classList.add('selected');
+        } else if (window.selectedDates.length > 1) {
+            const first = window.selectedDates[0];
+            const last = window.selectedDates[window.selectedDates.length - 1];
+            window.selectedDates.forEach(d => {
+                const btn = document.getElementById(`buyer-date-${d}`);
+                if(btn) {
+                    if (d === first || d === last) btn.classList.add('selected');
+                    else btn.classList.add('in-range');
+                }
+            });
+        }
+
+        const display = document.getElementById('selected-date-display');
+        const addBtn = document.getElementById('add-to-package-btn');
+        const basePrice = parseFloat(window.selectedItemToBook.sellingPrice || window.selectedItemToBook.price || 0);
+
+        if (window.selectedDates.length > 0) {
+            const days = window.selectedDates.length;
+            const total = (basePrice * days).toFixed(2);
+            
+            document.getElementById('modal-price-calc').innerHTML = `
+                <div style="font-size:0.9rem; color:#666;">Price per day: ${basePrice.toFixed(2)} AZN</div>
+                <div style="font-size:0.9rem; color:#666; margin-bottom: 10px;">Selected days: ${days}</div>
+                <div style="font-size:1.8rem; font-weight:800; color:var(--dark);">Total: ${total} AZN</div>
+            `;
+            
+            display.innerHTML = `<span style="color:#008b8b;"><i class="fas fa-calendar-check"></i> ${days} day(s) selected</span>`;
+            addBtn.disabled = false; addBtn.style.opacity = '1'; addBtn.style.cursor = 'pointer';
+        } else {
+            document.getElementById('modal-price-calc').innerHTML = `
+                <div style="font-size:0.9rem; color:#666;">Price per day: ${basePrice.toFixed(2)} AZN</div>
+                <div style="font-size:1.8rem; font-weight:800; color:var(--dark); opacity:0.5;">Total: 0.00 AZN</div>
+            `;
+            display.innerHTML = `<span style="color:#e74c3c;">Please select dates</span>`;
+            addBtn.disabled = true; addBtn.style.opacity = '0.5'; addBtn.style.cursor = 'not-allowed';
+        }
+    };
+
+    window.confirmAddToCart = function() {
+        if(!window.selectedItemToBook || window.selectedDates.length === 0) return;
+        
+        const daysCount = window.selectedDates.length;
+        const dateLabel = daysCount > 1 
+            ? `${window.selectedDates[0]} to ${window.selectedDates[daysCount - 1]} (${daysCount} days)` 
+            : window.selectedDates[0];
+        
+        const baseSelling = parseFloat(window.selectedItemToBook.sellingPrice || window.selectedItemToBook.price || 0);
+        const baseNet = parseFloat(window.selectedItemToBook.netCost || 0);
+
+        const itemWithDateRange = {
+            ...window.selectedItemToBook,
+            selectedDatesArray: window.selectedDates, 
+            selectedDate: dateLabel, 
+            sellingPrice: (baseSelling * daysCount).toFixed(2), 
+            netCost: (baseNet * daysCount).toFixed(2),
+            cartId: Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+        };
+        
+        window.currentCart.push(itemWithDateRange);
+        document.getElementById('details-modal').remove();
+        window.render('bookings');
+    };
+
+    window.removeFromCart = (cartId) => {
+        window.currentCart = window.currentCart.filter(i => i.cartId !== cartId);
         window.render('bookings');
     };
 
@@ -825,8 +1164,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 <input type="number" id="satis-input" value="${data.sellingPrice || ''}" readonly style="background:#f5f5f7; color:#333; font-weight:bold; cursor:not-allowed;">
                             </div>
                         </div>
-                        <label class="input-label" data-i18n="description">Description</label>
-                        <textarea id="t-included" style="height:80px;">${data.included || ''}</textarea>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn-action btn-edit" style="flex:1; padding:14px;" onclick="document.getElementById('tour-modal').remove()" data-i18n="cancel">CANCEL</button>
@@ -867,10 +1204,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         try {
             let finalImageUrl = "";
+            let preserveAvailableDates = [];
+            
             if (editIdLocal) {
                 const existingItem = inventory.find(x => x.id === editIdLocal);
-                if (existingItem && existingItem.image) finalImageUrl = existingItem.image;
+                if (existingItem) {
+                    if (existingItem.image) finalImageUrl = existingItem.image;
+                    if (existingItem.availableDates) preserveAvailableDates = existingItem.availableDates;
+                }
             }
+            
             const fileInput = document.getElementById('service-image');
             if (fileInput && fileInput.files.length > 0 && storageRef) {
                 const file = fileInput.files[0];
@@ -882,11 +1225,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             const tData = {
                 name: nameField, supplierName: document.getElementById('t-supplier').value, category: categoryVal,
                 rackRate: rackRateVal, netCost: nCost, markup: markup,
-                sellingPrice: sPrice, price: sPrice, image: finalImageUrl, included: document.getElementById('t-included').value || "",
+                sellingPrice: sPrice, price: sPrice, image: finalImageUrl,
                 is_verified: document.getElementById('t-verified').checked, currency: 'AZN',
                 region: categoryVal === 'Hotel' ? document.getElementById('t-region').value : null,
                 stars: categoryVal === 'Hotel' ? document.getElementById('t-stars').value : null,
-                supplier_uid: window.currentUserUid || 'admin'
+                supplier_uid: window.currentUserUid || 'admin',
+                availableDates: preserveAvailableDates
             };
 
             if (categoryVal === 'Activity') tData.is_certified = true;
@@ -904,145 +1248,105 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-    window.deletePartner = async (id) => { 
-        if(confirm('Точно удалить этого партнера?')) {
-            try { await remove(ref(db, `partners/${id}`)); } 
-            catch(e) { console.error("Delete error:", e); }
-        } 
+    window.processBooking = async () => {
+        if(window.currentCart.length === 0) return alert(t('empty_cart') || "Package is empty!");
+        const btn = document.getElementById('checkout-btn');
+        const origText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        btn.disabled = true;
+
+        try {
+            const totalSelling = window.currentCart.reduce((sum, item) => sum + parseFloat(item.sellingPrice || item.price || 0), 0);
+            const totalNet = window.currentCart.reduce((sum, item) => sum + parseFloat(item.netCost || 0), 0);
+            const orderId = 'ORD-' + Date.now();
+            
+            const orderData = {
+                orderId: orderId,
+                items: window.currentCart, 
+                totalSellingPrice: totalSelling, 
+                totalNetPrice: totalNet,
+                totalMargin: totalSelling - totalNet, 
+                status: 'pending', 
+                timestamp: Date.now(),
+                createdAt: Date.now(),
+                buyer_uid: window.currentUserUid
+            };
+
+            await push(ref(db, 'bookings'), orderData);
+            window.showInvoiceModal(orderData);
+            
+        } catch(e) {
+            console.error("Booking Error:", e);
+            alert("Error: " + e.message);
+            btn.innerHTML = origText; btn.disabled = false;
+        }
     };
 
-    window.showPartnerForm = function() {
-        const existingModal = document.getElementById('partner-modal');
+    window.showInvoiceModal = function(orderData) {
+        const existingModal = document.getElementById('invoice-modal');
         if (existingModal) existingModal.remove();
 
+        const itemsHtml = orderData.items.map(item => `
+            <tr style="border-bottom: 1px solid #eee;">
+                <td style="padding: 12px 10px; font-family: 'Inter', sans-serif;">${item.name} <br><span style="font-size:0.8rem; color:#888;">Dates: ${item.selectedDate}</span></td>
+                <td style="padding: 12px 10px; font-family: 'Inter', sans-serif; color: #666;">${t(item.category?.toLowerCase()) || item.category}</td>
+                <td style="padding: 12px 10px; text-align: right; font-weight: 600;">${item.currency === 'AZN' ? '₼' : '$'} ${item.sellingPrice || item.price}</td>
+            </tr>
+        `).join('');
+
+        const dateStr = new Date(orderData.createdAt).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
         const modalHtml = `
-        <div class="modal-overlay" id="partner-modal">
-            <div class="modal-content">
-                <form id="partner-form" onsubmit="window.handlePartnerSave(event)" novalidate>
-                    <div class="modal-header">
-                        <h2 data-i18n="add_partner">Add Partner</h2>
-                        <button type="button" class="modal-close" onclick="document.getElementById('partner-modal').remove()"><i class="fas fa-times"></i></button>
+        <div class="modal-overlay" id="invoice-modal" style="z-index: 5000;">
+            <div class="modal-content" style="max-width: 800px; padding: 0;">
+                <div id="invoice-print-area">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; border-bottom: 2px solid var(--primary); padding-bottom: 20px;">
+                        <div>
+                            <h1 style="margin: 0; color: var(--dark); font-family: 'Montserrat', sans-serif;">Caspian Travel Routes</h1>
+                            <p style="color: #666; margin: 5px 0 0 0; font-weight: 600;">Official B2B Invoice</p>
+                        </div>
+                        <div style="text-align: right;">
+                            <h3 style="margin: 0; color: #333; font-family: 'Montserrat', sans-serif;">INVOICE</h3>
+                            <p style="margin: 5px 0 0 0; color: #666;"><strong>Order ID:</strong> ${orderData.orderId}</p>
+                            <p style="margin: 5px 0 0 0; color: #666;"><strong>Date:</strong> ${dateStr}</p>
+                        </div>
                     </div>
-                    <div class="modal-body">
-                        <label class="input-label" data-i18n="company_name">Company Name</label>
-                        <input type="text" id="p-name" required placeholder="Caspian Hotels LLC">
-                        <label class="input-label" data-i18n="partner_type">Partner Type</label>
-                        <select id="p-type">
-                            <option value="Hotel">${t('hotel')}</option>
-                            <option value="Transport">${t('transport')}</option>
-                            <option value="Activity">${t('activity')}</option>
-                        </select>
-                        <div style="display:flex; gap:15px;">
-                            <div style="flex:1;">
-                                <label class="input-label" data-i18n="contact_person">Contact Person</label>
-                                <input type="text" id="p-contact" required>
-                            </div>
-                            <div style="flex:1;">
-                                <label class="input-label" data-i18n="phone">Phone</label>
-                                <input type="tel" id="p-phone" required placeholder="+994...">
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+                        <thead>
+                            <tr style="background: #f8f9fa; text-align: left;">
+                                <th style="padding: 12px 10px; border-bottom: 2px solid #ddd; color: #555;">Service Details</th>
+                                <th style="padding: 12px 10px; border-bottom: 2px solid #ddd; color: #555;">Type</th>
+                                <th style="padding: 12px 10px; border-bottom: 2px solid #ddd; text-align: right; color: #555;">Price</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${itemsHtml}
+                        </tbody>
+                    </table>
+                    <div style="display: flex; justify-content: flex-end;">
+                        <div style="min-width: 250px; background: #f8f9fa; padding: 20px; border-radius: 12px;">
+                            <div style="display: flex; justify-content: space-between; font-size: 1.2rem; font-weight: 800; color: var(--dark);">
+                                <span>TOTAL:</span>
+                                <span>₼ ${orderData.totalSellingPrice.toFixed(2)}</span>
                             </div>
                         </div>
-                        <label class="input-label" data-i18n="upload_license">Upload License / VÖEN</label>
-                        <input type="file" id="p-document" accept=".pdf,image/*" style="padding: 10px; margin-bottom: 15px; border: 1px solid #e1e4e8; border-radius: 8px; width: 100%; box-sizing: border-box;">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="p-verified">
-                            <span data-i18n="verified_partner">Verified Partner</span>
-                        </label>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn-action btn-edit" style="flex:1; padding:14px;" onclick="document.getElementById('partner-modal').remove()" data-i18n="cancel">CANCEL</button>
-                        <button type="submit" class="save-btn" id="save-partner-btn" style="flex:2; padding:14px;" data-i18n="save_item">SAVE</button>
-                    </div>
-                </form>
+                </div>
+                <div class="modal-footer no-print" style="justify-content: flex-end; background: #f0f2f5; border-radius: 0 0 20px 20px;">
+                    <button type="button" class="btn-action btn-edit" style="padding: 12px 20px;" onclick="window.closeInvoiceAndClear()">Close</button>
+                    <button type="button" class="btn-primary" style="padding: 12px 20px;" onclick="window.print()"><i class="fas fa-print"></i> Print / Save as PDF</button>
+                </div>
             </div>
         </div>`;
         document.body.insertAdjacentHTML('beforeend', modalHtml);
-        applyTranslations();
-        setTimeout(() => document.getElementById('partner-modal').classList.add('active'), 10);
+        setTimeout(() => document.getElementById('invoice-modal').classList.add('active'), 10);
     };
 
-    window.handlePartnerSave = async function(e) {
-        e.preventDefault(); 
-        const saveBtn = document.getElementById('save-partner-btn');
-        const originalText = saveBtn.innerHTML;
-        const nameField = document.getElementById('p-name').value.trim();
-        if (!nameField) return alert("Введите название компании!");
-
-        saveBtn.disabled = true;
-        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Загрузка...';
-
-        try {
-            let documentUrl = "";
-            const fileInput = document.getElementById('p-document');
-            if (fileInput && fileInput.files.length > 0 && storageRef) {
-                const file = fileInput.files[0];
-                const docReference = storageRef(storage, `partners_docs/${Date.now()}_${file.name}`);
-                const uploadResult = await uploadBytes(docReference, file);
-                documentUrl = await getDownloadURL(uploadResult.ref);
-            }
-
-            const partnerData = {
-                name: nameField, type: document.getElementById('p-type').value, contact: document.getElementById('p-contact').value.trim(),
-                phone: document.getElementById('p-phone').value.trim(), is_verified: document.getElementById('p-verified').checked,
-                documentUrl: documentUrl, createdAt: Date.now()
-            };
-            
-            await push(ref(db, 'partners'), partnerData);
-            document.getElementById('partner-modal').remove();
-
-        } catch (err) {
-            console.error("Ошибка сохранения партнера:", err);
-            alert("Ошибка: " + err.message);
-            saveBtn.disabled = false;
-            saveBtn.innerHTML = originalText;
-        }
-    };
-
-    window.seedDatabase = async () => {
-        const btn = document.getElementById('seed-btn');
-        if (btn) {
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Загрузка в Firebase...';
-            btn.disabled = true;
-        }
-
-        const regionalHotelsSeed = [
-            { service_type: 'hotel', service_name: "Gabala Forest Retreat", supplier_name: "Gabala Tourism LLC", region: "Gabala", stars: 4, rack_rate: 110.00, net_rate: 77.00, is_verified: true, image_filename: "", description: "Standard Double Room with Breakfast and Mountain View" },
-            { service_type: 'hotel', service_name: "Caucasus Boutique Hotel", supplier_name: "Caucasus Hospitality", region: "Gabala", stars: 3, rack_rate: 70.00, net_rate: 49.00, is_verified: false, image_filename: "", description: "Standard Twin Room, Free WiFi" },
-            { service_type: 'hotel', service_name: "Gabala City Center Hotel", supplier_name: "City Hotels Group", region: "Gabala", stars: 4, rack_rate: 95.00, net_rate: 66.50, is_verified: true, image_filename: "", description: "Deluxe Double Room with Balcony" },
-            { service_type: 'hotel', service_name: "Qusar Alpine Inn", supplier_name: "North Travel Az", region: "Qusar", stars: 3, rack_rate: 65.00, net_rate: 45.50, is_verified: true, image_filename: "", description: "Standard Double Room with Breakfast" },
-            { service_type: 'hotel', service_name: "Laza View Resort", supplier_name: "Laza Resort Management", region: "Qusar", stars: 4, rack_rate: 120.00, net_rate: 84.00, is_verified: true, image_filename: "", description: "Superior Room with Mountain View" },
-            { service_type: 'hotel', service_name: "Shahdag Qusar Guest House", supplier_name: "Local Community Qusar", region: "Qusar", stars: 3, rack_rate: 60.00, net_rate: 42.00, is_verified: false, image_filename: "", description: "Economy Twin Room, Breakfast included" },
-            { service_type: 'hotel', service_name: "Silk Road Boutique Hotel", supplier_name: "Sheki Heritage", region: "Sheki", stars: 4, rack_rate: 100.00, net_rate: 70.00, is_verified: true, image_filename: "", description: "Traditional Standard Room with Breakfast" },
-            { service_type: 'hotel', service_name: "Nuxa Family Inn", supplier_name: "Nuxa Hospitality", region: "Sheki", stars: 3, rack_rate: 65.00, net_rate: 45.50, is_verified: false, image_filename: "", description: "Family Room (up to 3 persons)" },
-            { service_type: 'hotel', service_name: "Sheki Palace View", supplier_name: "Palace Hotels AZ", region: "Sheki", stars: 4, rack_rate: 115.00, net_rate: 80.50, is_verified: true, image_filename: "", description: "Deluxe Room with Breakfast" },
-            { service_type: 'hotel', service_name: "Lankaran Springs & Spa", supplier_name: "South Coast Resorts", region: "Lankaran", stars: 4, rack_rate: 120.00, net_rate: 84.00, is_verified: true, image_filename: "", description: "Standard Double Room, Spa Access" },
-            { service_type: 'hotel', service_name: "Caspian Breeze Lankaran", supplier_name: "Caspian Tourism", region: "Lankaran", stars: 3, rack_rate: 75.00, net_rate: 52.50, is_verified: false, image_filename: "", description: "Standard Twin Room with Sea View" },
-            { service_type: 'hotel', service_name: "Talysh Mountains Resort", supplier_name: "Talysh Eco Tours", region: "Lankaran", stars: 4, rack_rate: 105.00, net_rate: 73.50, is_verified: true, image_filename: "", description: "Superior Double Room with Breakfast" }
-        ];
-
-        try {
-            const { db, dbFunc } = window;
-            const { ref, push } = dbFunc;
-            
-            for (const item of regionalHotelsSeed) {
-                const markupCalc = ((item.rack_rate - item.net_rate) / item.net_rate) * 100;
-                const formattedHotel = {
-                    category: "Hotel", name: item.service_name, supplierName: item.supplier_name, region: item.region,
-                    stars: item.stars.toString(), rackRate: item.rack_rate, netCost: item.net_rate, markup: parseFloat(markupCalc.toFixed(2)), 
-                    sellingPrice: item.rack_rate, price: item.rack_rate, is_verified: item.is_verified, image: item.image_filename,
-                    included: item.description, currency: "AZN", is_certified: false, supplier_uid: 'admin'
-                };
-                await push(ref(db, 'inventory'), formattedHotel);
-            }
-            
-            alert("12 региональных отелей успешно загружены в Firebase! Страница будет перезагружена.");
-            if (btn) btn.remove();
-            window.location.reload(); 
-            
-        } catch (err) {
-            console.error("Seed Error:", err);
-            alert("Ошибка при заполнении: " + err.message);
-            if (btn) { btn.innerHTML = '<i class="fas fa-database"></i> Авто-заполнение базы отелей'; btn.disabled = false; }
-        }
+    window.closeInvoiceAndClear = () => {
+        const modal = document.getElementById('invoice-modal');
+        if (modal) modal.remove();
+        window.currentCart = [];
+        alert(t('booking_success') || "Sifariş uğurla yaradıldı!");
+        window.render('bookings');
     };
 });

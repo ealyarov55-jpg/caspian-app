@@ -3,89 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
+    <title>Caspian Routes | Premium B2B Platform</title>
     
-    <title>Caspian DMC Aggregator</title>
-    <link rel="icon" href="data:,">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Montserrat:wght@600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-    <script>
-        window.addEventListener('unhandledrejection', function(event) {
-            if (event.reason && event.reason.message && event.reason.message.includes('Could not establish connection')) {
-                event.preventDefault(); 
-            }
-        });
-    </script>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="auth-loader" class="auth-loader"><div class="spinner"></div></div>
 
-    <header class="app-header">
+    <header class="app-header" id="main-header">
         <div class="header-left">
-            <span class="logo-text" onclick="window.render('home')">CASPIAN<b>DMC</b></span>
+            <span class="logo-text" id="nav-logo" onclick="if(window.render && window.currentPage !== 'login' && window.currentPage !== 'register') window.render(window.currentUserRole === 'buyer' ? 'showcase' : (window.currentUserRole === 'admin' ? 'home' : 'extranet'))">
+                <i class="fas fa-water"></i> CASPIAN<b>ROUTES</b>
+            </span>
         </div>
+        
         <div class="header-right">
-            <div id="dynamic-header-actions" class="dynamic-actions-container"></div>
+            <div id="main-navigation" style="display: flex; gap: 15px; align-items: center;">
+                <button id="nav-dashboard" class="btn-outline">
+                    <i class="fas fa-chart-pie"></i> <span data-i18n="dashboard">Dashboard</span>
+                </button>
+                
+                <button id="nav-inventory" class="btn-outline">
+                    <i class="fas fa-box-open"></i> <span data-i18n="inventory">Inventory</span>
+                </button>
+                
+                <button id="nav-bookings" class="btn-outline">
+                    <i class="fas fa-shopping-bag"></i> <span data-i18n="bookings">Bookings</span>
+                </button>
+                
+                <button id="nav-partners" class="btn-outline">
+                    <i class="fas fa-users"></i> <span data-i18n="partners">Partners</span>
+                </button>
+                
+                <button id="nav-profile" class="btn-outline">
+                    <i class="fas fa-building"></i> <span data-i18n="profile">Profile</span>
+                </button>
+            </div>
             
-            <div class="lang-dropdown" id="langDropdown">
-                <i class="fas fa-globe dropbtn" id="langBtn"></i>
-                <div class="dropdown-content" id="langMenu">
-                    <span data-lang="en">EN</span>
-                    <span data-lang="az">AZ</span>
-                    <span data-lang="ru">RU</span>
+            <div class="lang-dropdown" id="lang-switch">
+                <i class="fas fa-globe dropbtn"></i>
+                <div class="dropdown-content" id="lang-menu">
+                    <span data-lang="en">English</span>
+                    <span data-lang="ru">Русский</span>
+                    <span data-lang="az">Azərbaycan</span>
                 </div>
             </div>
+            
+            <button id="logout-btn" class="btn-outline-danger" style="display: none;" onclick="window.logout()">
+                <i class="fas fa-sign-out-alt"></i> <span data-i18n="logout">Logout</span>
+            </button>
         </div>
     </header>
 
-    <div class="content-area"><main class="content" id="app-content"></main></div>
-
-    <nav class="bottom-nav sidebar" style="display: none;">
-        <div class="sidebar-logo" style="display: none;">CASPIAN<b>DMC</b></div>
-        
-        <div class="nav-links-container">
-            <button onclick="window.render('home')" id="nav-home"><i class="fas fa-chart-line"></i><span data-i18n="dashboard">Dashboard</span></button>
-            <button onclick="window.render('inventory')" id="nav-inventory"><i class="fas fa-box-open"></i><span data-i18n="inventory">Inventory</span></button>
-            <button onclick="window.render('bookings')" id="nav-bookings"><i class="far fa-calendar-check"></i><span data-i18n="nav_bookings">Bookings</span></button>
-            <button onclick="window.render('partners')" id="nav-partners"><i class="fas fa-handshake"></i><span data-i18n="nav_partners">Partners</span></button>
-            <button onclick="window.render('profile')" id="nav-profile" style="display: none;"><i class="fas fa-user-shield"></i><span data-i18n="nav_profile">Profile</span></button>
-            <button onclick="window.render('login')" id="nav-login" style="display: none;"><i class="fas fa-sign-in-alt"></i><span data-i18n="nav_login">Login</span></button>
-        </div>
-
-        <div class="logout-container" style="display: none;" id="logout-container">
-            <button onclick="window.logout()" id="nav-logout" class="logout-nav-btn"><i class="fas fa-sign-out-alt"></i><span data-i18n="logout">Logout</span></button>
-        </div>
-    </nav>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const langBtn = document.getElementById('langBtn');
-            const langMenu = document.getElementById('langMenu');
-            const langItems = langMenu.querySelectorAll('span');
-
-            langBtn.addEventListener('click', (e) => { e.stopPropagation(); langMenu.classList.toggle('show-menu'); });
-            document.addEventListener('click', () => { if (langMenu.classList.contains('show-menu')) langMenu.classList.remove('show-menu'); });
-
-            langItems.forEach(item => {
-                item.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const selectedLang = e.target.getAttribute('data-lang');
-                    if (window.setLanguage) window.setLanguage(selectedLang);
-                    langMenu.classList.remove('show-menu');
-                });
-            });
-        });
-    </script>
+    <main class="content-area" id="app-content"></main>
 
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
       import { getDatabase, ref, push, set, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-      import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+      import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
       import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
       const firebaseConfig = {
@@ -98,16 +80,13 @@
       };
 
       const app = initializeApp(firebaseConfig);
-      
       window.db = getDatabase(app);
       window.dbFunc = { ref, push, set, onValue, remove, update };
-      
       window.auth = getAuth(app);
-      window.authFunc = { signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence };
-      
+      window.authFunc = { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence };
       window.storage = getStorage(app);
       window.storageFunc = { storageRef, uploadBytes, getDownloadURL };
     </script>
-    <script type="module" src="app2.js?v=04042026"></script>
+    <script type="module" src="app2.js"></script>
 </body>
 </html>

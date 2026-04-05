@@ -1,20 +1,11 @@
 // i18n.js - Отказоустойчивый модуль локализации
-
-const fallbackDict = {
-    welcome: "Welcome, Boss! 🤝", dashboard: "Dashboard", inventory: "Inventory",
-    total_volume: "TOTAL VOLUME (NET)", saved_commissions: "SAVED B2B COMMISSIONS",
-    total_inventory: "TOTAL INVENTORY", logout: "Logout", nav_dashboard: "Dashboard",
-    nav_inventory: "Inventory", nav_bookings: "Bookings", nav_partners: "Partners",
-    nav_profile: "Profile", nav_login: "Login", search_placeholder: "Search...",
-    under_construction: "Section under construction", add_service: "Add Service",
-    net_label: "Net", margin_label: "Margin", hotel: "Hotel", transport: "Transport", activity: "Activity"
-};
-
+const fallbackDict = { welcome: "Welcome, Boss! 🤝", dashboard: "Dashboard", inventory: "Inventory", total_volume: "TOTAL VOLUME (NET)", saved_commissions: "SAVED B2B COMMISSIONS", total_inventory: "TOTAL INVENTORY", logout: "Logout", nav_dashboard: "Dashboard", nav_inventory: "Inventory", nav_bookings: "Bookings", nav_partners: "Partners", nav_profile: "Profile", nav_login: "Login", search_placeholder: "Search...", under_construction: "Section under construction", add_service: "Add Service", net_label: "Net", margin_label: "Margin", hotel: "Hotel", transport: "Transport", activity: "Activity" };
 let currentDict = { ...fallbackDict };
 
 export async function loadLanguage(lang) {
     try {
-        const response = await fetch(`./locales/${lang}.json`);
+        // ШАГ 4: ИСПРАВЛЕН ПУТЬ НА АБСОЛЮТНЫЙ
+        const response = await fetch(`/locales/${lang}.json`);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         
         const text = await response.text();

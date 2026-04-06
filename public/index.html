@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
     <div id="auth-loader" class="auth-loader"><div class="spinner"></div></div>
@@ -29,19 +29,15 @@
                 <button id="nav-dashboard" class="btn-outline">
                     <i class="fas fa-chart-pie"></i> <span data-i18n="dashboard">Dashboard</span>
                 </button>
-                
                 <button id="nav-inventory" class="btn-outline">
                     <i class="fas fa-box-open"></i> <span data-i18n="inventory">Inventory</span>
                 </button>
-                
                 <button id="nav-bookings" class="btn-outline">
                     <i class="fas fa-shopping-bag"></i> <span data-i18n="bookings">Bookings</span>
                 </button>
-                
                 <button id="nav-partners" class="btn-outline">
                     <i class="fas fa-users"></i> <span data-i18n="partners">Partners</span>
                 </button>
-                
                 <button id="nav-profile" class="btn-outline">
                     <i class="fas fa-building"></i> <span data-i18n="profile">Profile</span>
                 </button>
@@ -87,6 +83,6 @@
       window.storage = getStorage(app);
       window.storageFunc = { storageRef, uploadBytes, getDownloadURL };
     </script>
-    <script type="module" src="app2.js"></script>
+    <script type="module" src="app2.js?v=3"></script>
 </body>
 </html>

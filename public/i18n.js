@@ -1,54 +1,147 @@
-// i18n.js - Отказоустойчивый модуль локализации
-const fallbackDict = { welcome: "Welcome, Boss! 🤝", dashboard: "Dashboard", inventory: "Inventory", total_volume: "TOTAL VOLUME (NET)", saved_commissions: "SAVED B2B COMMISSIONS", total_inventory: "TOTAL INVENTORY", logout: "Logout", nav_dashboard: "Dashboard", nav_inventory: "Inventory", nav_bookings: "Bookings", nav_partners: "Partners", nav_profile: "Profile", nav_login: "Login", search_placeholder: "Search...", under_construction: "Section under construction", add_service: "Add Service", net_label: "Net", margin_label: "Margin", hotel: "Hotel", transport: "Transport", activity: "Activity" };
-let currentDict = { ...fallbackDict };
+// lib/i18n.ts
+import type { Locale, I18nDict } from "./types";
 
-export async function loadLanguage(lang) {
-    try {
-        // ШАГ 4: ИСПРАВЛЕН ПУТЬ НА АБСОЛЮТНЫЙ
-        const response = await fetch(`/locales/${lang}.json`);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        
-        const text = await response.text();
-        if (!text.trim()) throw new Error("JSON file is empty");
-        
-        currentDict = JSON.parse(text);
-        localStorage.setItem('caspian_lang', lang);
-        document.documentElement.lang = lang;
-    } catch (error) {
-        console.error(`i18n Error [${lang}]:`, error.message, "- Falling back to English.");
-        currentDict = { ...fallbackDict };
-        localStorage.setItem('caspian_lang', 'en');
-        document.documentElement.lang = 'en';
-    } finally {
-        applyTranslations();
-    }
+const dict: Record<Locale, I18nDict> = {
+  en: {
+    inventory: "Inventory",
+    myProperties: "My Properties",
+    addRoom: "Add Room",
+    addCar: "Add Vehicle",
+    manageCalendar: "Availability Calendar",
+    selectUnit: "Select a room or vehicle",
+    blockDates: "Block Dates",
+    unblockDates: "Unblock",
+    blockedDates: "Blocked Periods",
+    save: "Save",
+    cancel: "Cancel",
+    roomName: "Room Name",
+    roomType: "Room Type",
+    capacity: "Capacity (guests)",
+    netPrice: "Net Price / Night",
+    currency: "Currency",
+    description: "Description",
+    plateNumber: "Plate Number",
+    vehicleType: "Vehicle Type",
+    carName: "Vehicle Name",
+    noProperties: "No properties found. Contact your administrator.",
+    loading: "Loading…",
+    saved: "Saved successfully",
+    errorSaving: "Error saving. Please try again.",
+    from: "From",
+    to: "To",
+    note: "Internal note (optional)",
+    removeBlock: "Remove",
+    hotel: "Hotel",
+    transport: "Transport",
+    rooms: "Rooms",
+    cars: "Vehicles",
+    addProperty: "Add Property",
+    propertyName: "Property Name",
+    location: "Location / City",
+    imageUrl: "Cover Image URL",
+    stars: "Star Rating",
+    active: "Active",
+    inactive: "Inactive",
+    unitRequired: "Please select a unit first.",
+    rangeRequired: "Please pick a start and end date.",
+  },
+  ru: {
+    inventory: "Инвентарь",
+    myProperties: "Мои объекты",
+    addRoom: "Добавить номер",
+    addCar: "Добавить автомобиль",
+    manageCalendar: "Календарь доступности",
+    selectUnit: "Выберите номер или автомобиль",
+    blockDates: "Закрыть даты",
+    unblockDates: "Разблокировать",
+    blockedDates: "Закрытые периоды",
+    save: "Сохранить",
+    cancel: "Отмена",
+    roomName: "Название номера",
+    roomType: "Тип номера",
+    capacity: "Вместимость (гостей)",
+    netPrice: "Нетто цена / ночь",
+    currency: "Валюта",
+    description: "Описание",
+    plateNumber: "Номерной знак",
+    vehicleType: "Тип транспорта",
+    carName: "Название автомобиля",
+    noProperties: "Объекты не найдены. Обратитесь к администратору.",
+    loading: "Загрузка…",
+    saved: "Успешно сохранено",
+    errorSaving: "Ошибка сохранения. Попробуйте снова.",
+    from: "С",
+    to: "По",
+    note: "Внутренняя заметка (необязательно)",
+    removeBlock: "Удалить",
+    hotel: "Отель",
+    transport: "Транспорт",
+    rooms: "Номера",
+    cars: "Автомобили",
+    addProperty: "Добавить объект",
+    propertyName: "Название объекта",
+    location: "Локация / Город",
+    imageUrl: "URL обложки",
+    stars: "Звёздность",
+    active: "Активен",
+    inactive: "Неактивен",
+    unitRequired: "Сначала выберите единицу.",
+    rangeRequired: "Выберите дату начала и окончания.",
+  },
+  az: {
+    inventory: "İnventar",
+    myProperties: "Mənim Obyektlərim",
+    addRoom: "Otaq əlavə et",
+    addCar: "Avtomobil əlavə et",
+    manageCalendar: "Mövcudluq Təqvimi",
+    selectUnit: "Otaq və ya avtomobil seçin",
+    blockDates: "Tarixləri bağla",
+    unblockDates: "Bloku aç",
+    blockedDates: "Bağlı dövrlər",
+    save: "Yadda saxla",
+    cancel: "İmtina",
+    roomName: "Otağın adı",
+    roomType: "Otaq növü",
+    capacity: "Tutum (qonaqlar)",
+    netPrice: "Net qiymət / gecə",
+    currency: "Valyuta",
+    description: "Təsvir",
+    plateNumber: "Dövlət nişanı",
+    vehicleType: "Nəqliyyat növü",
+    carName: "Avtomobilin adı",
+    noProperties: "Obyektlər tapılmadı. Administratorla əlaqə saxlayın.",
+    loading: "Yüklənir…",
+    saved: "Uğurla saxlanıldı",
+    errorSaving: "Saxlama xətası. Yenidən cəhd edin.",
+    from: "Başlanğıc",
+    to: "Son",
+    note: "Daxili qeyd (istəyə bağlı)",
+    removeBlock: "Sil",
+    hotel: "Otel",
+    transport: "Nəqliyyat",
+    rooms: "Otaqlar",
+    cars: "Avtomobillər",
+    addProperty: "Obyekt əlavə et",
+    propertyName: "Obyektin adı",
+    location: "Məkan / Şəhər",
+    imageUrl: "Örtük şəkli URL",
+    stars: "Ulduz dərəcəsi",
+    active: "Aktiv",
+    inactive: "Qeyri-aktiv",
+    unitRequired: "Əvvəlcə vahid seçin.",
+    rangeRequired: "Başlanğıc və son tarixi seçin.",
+  },
+};
+
+export function getDict(locale: Locale = "en"): I18nDict {
+  return dict[locale] ?? dict.en;
 }
 
-export function applyTranslations() {
-    document.querySelectorAll('[data-i18n]').forEach(el => {
-        const key = el.getAttribute('data-i18n');
-        if (currentDict[key]) {
-            if (el.tagName === 'INPUT' && el.hasAttribute('placeholder')) {
-                el.setAttribute('placeholder', currentDict[key]);
-            } else {
-                const icon = el.querySelector('i');
-                if (icon) {
-                    el.innerHTML = '';
-                    el.appendChild(icon);
-                    el.appendChild(document.createTextNode(' ' + currentDict[key]));
-                } else {
-                    el.innerText = currentDict[key];
-                }
-            }
-        }
-    });
-}
-
-// ЭКСПОРТ ДЛЯ ДИНАМИЧЕСКОГО РЕНДЕРА В JS
-export function t(key) {
-    return currentDict[key] || fallbackDict[key] || key;
-}
-
-export function getCurrentLang() {
-    return localStorage.getItem('caspian_lang') || 'en';
+export function detectLocale(): Locale {
+  if (typeof window === "undefined") return "en";
+  const saved = localStorage.getItem("caspian_lang") as Locale | null;
+  if (saved && dict[saved]) return saved;
+  const browser = navigator.language.slice(0, 2) as Locale;
+  if (dict[browser]) return browser;
+  return "en";
 }
